@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>File Upload and Display</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    textarea {
+      width: 100%;
+      height: 200px;
+      margin-top: 10px;
+    }
+    #outputBox {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Upload and Display File Contents</h1>
+
+  <!-- File Upload -->
+  <label for="fileInput">Upload a file:</label>
+  <input type="file" id="fileInput" accept=".txt">
+  <br><br>
+
+  <!-- File Contents Display -->
+  <div id="outputBox">
+    <h3>File Contents:</h3>
+    <textarea id="fileContent" readonly placeholder="File content will appear here..."></textarea>
+  </div>
+
+  <script>
+    const fileInput = document.getElementById('fileInput');
+    const fileContentTextArea = document.getElementById('fileContent');
+
+    // Event Listener for File Upload
+    fileInput.addEventListener('change', (event) => {
+      const file = event.target.files[0]; // Get the selected file
+
+      if (file) {
+        const reader = new FileReader(); // Create a FileReader object
+        reader.onload = function (e) {
+          const content = e.target.result; // Get the file content
+          fileContentTextArea.value = content; // Display content in the textarea
+        };
+        reader.readAsText(file); // Read the file as text
+      }
+    });
+  </script>
+</body>
+</html>
