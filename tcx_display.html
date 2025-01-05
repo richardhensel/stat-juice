@@ -77,106 +77,15 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <!-- Include Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script src="scripts/tcx_utils.js"></script>
+    <script src="scripts/plotting_utils.js"></script>
     <script>
 
-        // Function to process parsed XML and return the required data structures
-        function processTcxXml(xml) {
-            // Extract activity metadata
-            const activityElement = xml.getElementsByTagName('Activity')[0];
-            const activityType = activityElement ? activityElement.getAttribute('Sport') : null;
-            const activityId = activityElement ? activityElement.getElementsByTagName('Id')[0]?.textContent : null;
-
-            // Extract schema version and XML version from the XML
-            const schemaLocation = xml.documentElement.getAttribute('xsi:schemaLocation');
-            const xmlVersion = xml.xmlVersion;
-
-            // Prepare containers for timeseries and lap data
-            const timeseriesData = [];
-            const lapStartTimes = [];
-
-            // Get the laps from the TCX file
-            const laps = xml.getElementsByTagName('Lap');
-
-            for (let lapIndex = 0; lapIndex < laps.length; lapIndex++) {
-                const lap = laps[lapIndex];
-                const lapStartTime = lap.getAttribute('StartTime');
-                lapStartTimes.push(lapStartTime);
-
-                // Get lap-level data: total calories and total time
-                const lapCalories = parseFloat(lap.getElementsByTagName('Calories')[0]?.textContent || null);
-                const lapDuration = parseFloat(lap.getElementsByTagName('TotalTimeSeconds')[0]?.textContent || null);
-
-                // Process each trackpoint within this lap
-                const trackpoints = lap.getElementsByTagName('Trackpoint');
-                let previousTrackpoint = null;
-
-                for (let i = 0; i < trackpoints.length; i++) {
-                    const trackpoint = trackpoints[i];
-                    const timestamp = trackpoint.getElementsByTagName('Time')[0]?.textContent || null;
-
-                    // Extract position data
-                    const position = trackpoint.getElementsByTagName('Position')[0];
-                    const lat = position ? parseFloat(position.getElementsByTagName('LatitudeDegrees')[0]?.textContent || null) : null;
-                    const lon = position ? parseFloat(position.getElementsByTagName('LongitudeDegrees')[0]?.textContent || null) : null;
-
-                    // Extract additional data
-                    const altitude = parseFloat(trackpoint.getElementsByTagName('AltitudeMeters')[0]?.textContent || null);
-                    const distance = parseFloat(trackpoint.getElementsByTagName('DistanceMeters')[0]?.textContent || null);
-                    const hr = parseFloat(trackpoint.getElementsByTagName('HeartRateBpm')[0]?.getElementsByTagName('Value')[0]?.textContent || null);
-                    const cadence = parseFloat(trackpoint.getElementsByTagName('Cadence')[0]?.textContent || null);
-                    const power = parseFloat(trackpoint.getElementsByTagName('Extensions')[0]?.getElementsByTagName('ns3:TPX')[0]?.getElementsByTagName('ns3:Watts')[0]?.textContent || null);
-                    const speed = parseFloat(trackpoint.getElementsByTagName('Extensions')[0]?.getElementsByTagName('ns3:TPX')[0]?.getElementsByTagName('ns3:Speed')[0]?.textContent || null);
-                    const temperature = parseFloat(trackpoint.getElementsByTagName('Temperature')[0]?.textContent || null);
-                    const course = parseFloat(trackpoint.getElementsByTagName('Course')[0]?.textContent || null);
-
-                    // Calculate the calories since the last sample
-                    let caloriesSinceLastSample = null;
-                    if (previousTrackpoint) {
-                        const timeElapsedSinceLastTrackpoint = (new Date(timestamp) - new Date(previousTrackpoint.timestamp)) / 1000; // in seconds
-                        const lapTime = lapDuration || 1; // Prevent division by zero if lap duration is null
-                        caloriesSinceLastSample = (lapCalories * timeElapsedSinceLastTrackpoint) / lapTime;
-                    } else {
-                        // For the first trackpoint in the lap, assign the total lap calories
-                        caloriesSinceLastSample = lapCalories || null;
-                    }
-
-                    // Store the data for this trackpoint
-                    timeseriesData.push({
-                        timestamp: timestamp,
-                        position: [lat, lon],
-                        altitude: altitude,
-                        distance: distance,
-                        hr: hr,
-                        cadence: cadence,
-                        power: power,
-                        speed: speed,
-                        caloriesSinceLastSample: caloriesSinceLastSample,
-                        temperature: temperature,
-                        course: course
-                    });
-
-                    previousTrackpoint = { timestamp: timestamp }; // Store the previous trackpoint to calculate elapsed time
-                }
-            }
-
-            // Return the data structures
-            return {
-                timeseriesData: timeseriesData,
-                lapStartTimes: lapStartTimes,
-                activityData: {
-                    activityType: activityType,
-                    activityId: activityId
-                },
-                metadata: {
-                    xmlVersion: xmlVersion,
-                    schemaLocation: schemaLocation
-                }
-            };
-        }
 
         // Initialize the map
         var map = L.map('map').setView([-27.48, 153.0], 13); // Centered at Brisbane
-        var mapBounds = L.latLngBounds();
+        // var mapBounds = L.latLngBounds();
 
         // Add a tile layer (OpenStreetMap)
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -196,6 +105,59 @@
         var tcxLayerRight = null;
         var chartRight = null;
 
+        function handleTcxFileUpload(event, side) {
+            var file = event.target.files[0];
+            if (!file) return;
+
+            var reader = new FileReader();
+            reader.onload = function (e) {
+                var parser = new DOMParser();
+                var xml = parser.parseFromString(e.target.result, 'text/xml');
+                var data = processTcxXml(xml);
+
+                // Update map and chart for Left Column or Right Column
+                if (side === 'left') {
+
+                    tcxLayerLeft = plotPolylineOnMap(data, map, tcxLayerLeft, 'blue');
+
+                    var ctx = document.getElementById(`hrDistanceGraphLeft`).getContext('2d');
+                    chartLeft = plotHrDistanceChart(data, ctx, chartLeft, 'blue')
+
+                    clearTcxButtonLeft.style.display = 'inline-block';
+
+                } else if (side === 'right') {
+                    tcxLayerRight = plotPolylineOnMap(data, map, tcxLayerRight, 'green');
+
+                    // Plot HR vs Distance graph
+                    var ctx = document.getElementById(`hrDistanceGraphRight`).getContext('2d');
+                    chartRight = plotHrDistanceChart(data, ctx, chartRight, 'green')
+                    clearTcxButtonRight.style.display = 'inline-block';
+                }
+
+            };
+            reader.readAsText(file);
+        }
+
+        function clearData(side) {
+            if (side === 'left') {
+
+                clearPolylineFromMap(tcxLayerLeft, map);
+
+                clearChartFromMap(chartLeft);
+
+                tcxUploadLeft.value = '';
+                clearTcxButtonLeft.style.display = 'none';
+            } else if (side === 'right') {
+
+                clearPolylineFromMap(tcxLayerRight, map);
+
+                clearChartFromMap(chartRight);
+
+                tcxUploadRight.value = '';
+                clearTcxButtonRight.style.display = 'none';
+            }
+        }
+
         // Handle TCX file upload for the Left Column
         tcxUploadLeft.addEventListener('change', function (event) {
             handleTcxFileUpload(event, 'left');
@@ -207,109 +169,6 @@
         });
 
 
-        function handleTcxFileUpload(event, side) {
-            var file = event.target.files[0];
-            if (!file) return;
-
-            var reader = new FileReader();
-            reader.onload = function (e) {
-                var parser = new DOMParser();
-                var xml = parser.parseFromString(e.target.result, 'text/xml');
-                var data = processTcxXml(xml);
-
-                // Extract positions
-                var positions = data.timeseriesData
-                    .map(entry => entry.position)
-                    .filter(position => position[0] !== null && position[1] !== null);
-
-                // Extract HR and Distance data
-                const hrData = data.timeseriesData.map(entry => entry.hr).filter(hr => hr !== null);
-                const distanceData = data.timeseriesData.map(entry => entry.distance).filter(distance => distance !== null);
-
-                // Update map and chart for Left Column or Right Column
-                if (side === 'left') {
-                    if (tcxLayerLeft) map.removeLayer(tcxLayerLeft); // Clear previous layer if exists
-
-                    // Plot positions on the map
-                    tcxLayerLeft = L.polyline(positions, { color: 'blue' }).addTo(map);
-
-                    tcxLayerLeft.getLatLngs().forEach(function(latlng) {
-                        mapBounds.extend(latlng);
-                    });
-
-                    // Plot HR vs Distance graph
-                    plotHrDistanceGraph(hrData, distanceData, 'left');
-                    clearTcxButtonLeft.style.display = 'inline-block';
-                } else if (side === 'right') {
-                    if (tcxLayerRight) map.removeLayer(tcxLayerRight); // Clear previous layer if exists
-
-                    // Plot positions on the map
-                    tcxLayerRight = L.polyline(positions, { color: 'green' }).addTo(map);
-
-                    tcxLayerRight.getLatLngs().forEach(function(latlng) {
-                        mapBounds.extend(latlng);
-                    });
-
-                    // Plot HR vs Distance graph
-                    plotHrDistanceGraph(hrData, distanceData, 'right');
-                    clearTcxButtonRight.style.display = 'inline-block';
-                }
-
-                // Zoom the map to fit the polyline
-                map.fitBounds(mapBounds);
-            };
-            reader.readAsText(file);
-        }
-
-        function plotHrDistanceGraph(hrData, distanceData, side) {
-            var ctx = document.getElementById(`hrDistanceGraph${side.charAt(0).toUpperCase() + side.slice(1)}`).getContext('2d');
-
-            if (side === 'left') {
-                if (chartLeft) {
-                    chartLeft.destroy();
-                }
-                chartLeft = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: distanceData,
-                        datasets: [{
-                            label: 'Heart Rate',
-                            data: hrData,
-                            borderColor: 'blue',
-                            fill: false,
-                            borderWidth: 2
-                        }]
-                    },
-                    options: {
-                        scales: {
-                            x: { type: 'linear', position: 'bottom' }
-                        }
-                    }
-                });
-            } else if (side === 'right') {
-                if (chartRight) {
-                    chartRight.destroy();
-                }
-                chartRight = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: distanceData,
-                        datasets: [{
-                            label: 'Heart Rate',
-                            data: hrData,
-                            borderColor: 'green',
-                            fill: false,
-                            borderWidth: 2
-                        }]
-                    },
-                    options: {
-                        scales: {
-                            x: { type: 'linear', position: 'bottom' }
-                        }
-                    }
-                });
-            }
-        }
 
 
         // Handle clear button for Left Column
@@ -322,27 +181,7 @@
             clearData('right');
         });
 
-        function clearData(side) {
-            if (side === 'left') {
-                if (tcxLayerLeft) {
-                    map.removeLayer(tcxLayerLeft);
-                }
-                if (chartLeft) {
-                    chartLeft.destroy();
-                }
-                tcxUploadLeft.value = '';
-                clearTcxButtonLeft.style.display = 'none';
-            } else if (side === 'right') {
-                if (tcxLayerRight) {
-                    map.removeLayer(tcxLayerRight);
-                }
-                if (chartRight) {
-                    chartRight.destroy();
-                }
-                tcxUploadRight.value = '';
-                clearTcxButtonRight.style.display = 'none';
-            }
-        }
+
     </script>
 </body>
 </html>

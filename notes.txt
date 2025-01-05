@@ -1,0 +1,32 @@
+allow user to upload two or more tcx files which are appended together
+
+in the left column, initially show two data upload buttons as presently, stacked vertically. 
+If the first two are already full, show a plus symbol below these. If the user hits the plus symbol, another upload button appears. If the user uploads a file into that one, the plus button appears below it again. This can be repeated an arbitrary number of times. 
+
+For each file the user uploads, show the clear button as currently. 
+
+For files 3-n, show a minus button next to the upload button. If the user hits this, the upload button, and corresponding file (if any are loaded) are cleared. 
+
+For each file that's uploaded, plot it as currently. DIfferent colour for each file
+
+
+
+
+
+
+
+            // const addUploadButton = document.createElement('button');
+            // addUploadButton.textContent = '+';
+            // addUploadButton.className = 'button button-small';
+            // addUploadButton.addEventListener('click', createUploadField);
+            // <button id="add-upload-button" class="button">+</button>
+
+            uploadWrapper.appendChild(fileInput);
+            uploadWrapper.appendChild(clearButton);
+
+            if (id > 1) uploadWrapper.appendChild(removeButton);
+
+            // if (id >= 6) {
+            //     if (addUploadButton) addUploadButton.remove();
+
+            // }

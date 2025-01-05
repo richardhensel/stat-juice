@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Decode Garmin .FIT File</title>
+</head>
+<body>
+    <h1>Decode Garmin .FIT File</h1>
+    <input type="file" id="fitFileInput" />
+    <pre id="output"></pre>
+
+    <!-- Define `exports` as a global variable -->
+    <script>
+        var exports = {};
+    </script>
+
+    <!-- Load the fit-parser library -->
+    <script src="https://cdn.jsdelivr.net/npm/fit-file-parser@1.21.0/dist/fit-parser.min.js"></script>
+
+    <script>
+        // Access the `FitParser` class from `exports`
+        const FitParser = exports.default;
+
+        // Ensure the script works when a .FIT file is selected
+        document.getElementById('fitFileInput').addEventListener('change', (event) => {
+            const file = event.target.files[0];
+
+            if (file) {
+                const reader = new FileReader();
+
+                reader.onload = (e) => {
+                    const fitParser = new FitParser();
+
+                    fitParser.parse(e.target.result, (error, result) => {
+                        if (error) {
+                            console.error('Error parsing FIT file:', error);
+                            document.getElementById('output').textContent = `Error: ${error.message}`;
+                            return;
+                        }
+
+                        console.log('Parsed FIT file:', result);
+                        document.getElementById('output').textContent = JSON.stringify(result, null, 2);
+                    });
+                };
+
+                reader.readAsArrayBuffer(file); // Read file as an ArrayBuffer
+            } else {
+                alert('No file selected!');
+            }
+        });
+    </script>
+</body>
+</html>
