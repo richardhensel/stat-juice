@@ -288,7 +288,7 @@
 
                 // Handle the UI
                 const color = colors[id % colors.length]; // Cycle through the colours if more uploads than colours.
-                // mapLayers[id] = plotPolylineOnMap(dataInput[id], map, mapLayers[id], color);
+                mapLayers[id] = plotPolylineOnMap(dataInput[id], map, mapLayers[id], color);
                 document.querySelector(`#upload-wrapper-${id} .button-danger`).style.display = 'inline-block';
 
                 // if (dataInput.every(element => element !== null)) {
