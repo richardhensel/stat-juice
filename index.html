@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Map with Polyline</title>
+    <title>Map with Multiple TCX Files</title>
     <!-- Include Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         #map {
-            height: 500px; /* Adjust height as needed */
+            height: 500px;
             width: 100%;
             border: 2px solid #000;
         }
@@ -22,18 +22,10 @@
             font-family: Arial, sans-serif;
             font-size: 16px;
         }
-        #coordinate-list {
-            white-space: pre-wrap;
-            border: 1px solid #ccc;
-            padding: 10px;
-            background-color: #f9f9f9;
-            height: 150px;
-            overflow-y: auto;
-        }
         .button {
             padding: 8px 16px;
             margin: 10px 0;
-            background-color: #007bff; /* Blue background */
+            background-color: #007bff;
             color: #fff;
             border: none;
             border-radius: 4px;
@@ -43,145 +35,241 @@
             background-color: #0056b3;
         }
         .button-danger {
-            background-color: #d9534f; /* Red background for clear buttons */
+            background-color: #d9534f;
         }
         .button-danger:hover {
             background-color: #c9302c;
         }
+        .button-small {
+            padding: 4px 8px;
+            margin-left: 10px;
+        }
+        .button-download {
+            padding: 8px 16px;
+            margin: 10px 0;
+            background-color: #28a745;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
-    <h1>Map with TCX and Dynamic Waypoints</h1>
+    <h1>Append TCX Files</h1>
     <div id="map"></div>
     <div id="content">
         <!-- Left Column -->
         <div class="column">
-            <h2>Left TCX File Waypoints</h2>
-            <input type="file" id="tcx-upload-left" accept=".tcx" class="button">
-            <button id="clear-tcx-left" class="button button-danger" style="display: none;">Clear TCX Waypoints</button>
-            <!-- Canvas for the graph -->
-            <canvas id="hrDistanceGraphLeft" width="400" height="200"></canvas>
+            <h2>Input files to be appended</h2>
+            <div id="upload-container"></div>
+            <!-- <button id="add-upload-button" class="button">+</button> -->
         </div>
 
         <!-- Right Column -->
         <div class="column">
-            <h2>Right TCX File Waypoints</h2>
-            <input type="file" id="tcx-upload-right" accept=".tcx" class="button">
-            <button id="clear-tcx-right" class="button button-danger" style="display: none;">Clear TCX Waypoints</button>
-            <!-- Canvas for the graph -->
-            <canvas id="hrDistanceGraphRight" width="400" height="200"></canvas>
+            <h2>Append</h2>
+            <div id="download-container"></div>
+            <!-- <button id="add-upload-button" class="button">+</button> -->
         </div>
     </div>
 
     <!-- Include Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <!-- Include Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
     <script src="scripts/tcx_utils.js"></script>
     <script src="scripts/plotting_utils.js"></script>
     <script>
-
-
-        // Initialize the map
-        var map = L.map('map').setView([-27.48, 153.0], 13); // Centered at Brisbane
-        // var mapBounds = L.latLngBounds();
-
-        // Add a tile layer (OpenStreetMap)
+        // Initialize the map and set a default tile layer
+        const map = L.map('map').setView([-27.48, 153.0], 13);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
 
-        // Elements for TCX file (Left Column)
-        var tcxUploadLeft = document.getElementById('tcx-upload-left');
-        var clearTcxButtonLeft = document.getElementById('clear-tcx-left');
-        var tcxLayerLeft = null;
-        var chartLeft = null;
+        const maxUploads = 7;
+        // let uploadCounter = 0;
 
-        // Elements for TCX file (Right Column)
-        var tcxUploadRight = document.getElementById('tcx-upload-right');
-        var clearTcxButtonRight = document.getElementById('clear-tcx-right');
-        var tcxLayerRight = null;
-        var chartRight = null;
+        const mapLayers = Array(maxUploads).fill(null);
+        const colors = ['blue', 'green', 'red', 'purple', 'orange', 'brown', 'cyan'];
 
-        function handleTcxFileUpload(event, side) {
-            var file = event.target.files[0];
-            if (!file) return;
+        const uploadContainer = document.getElementById('upload-container');
 
-            var reader = new FileReader();
-            reader.onload = function (e) {
-                var parser = new DOMParser();
-                var xml = parser.parseFromString(e.target.result, 'text/xml');
-                var data = processTcxXml(xml);
+        // List to store the data from uploaded files.
+        var dataInput = [];
 
-                // Update map and chart for Left Column or Right Column
-                if (side === 'left') {
+        function createUploadField() {
 
-                    tcxLayerLeft = plotPolylineOnMap(data, map, tcxLayerLeft, 'blue');
+            // Increase the size of the dataInput array by 1.
+            dataInput.push(null);
 
-                    var ctx = document.getElementById(`hrDistanceGraphLeft`).getContext('2d');
-                    chartLeft = plotHrDistanceChart(data, ctx, chartLeft, 'blue')
+            const id = dataInput.length - 1;
 
-                    clearTcxButtonLeft.style.display = 'inline-block';
+            const uploadWrapper = document.createElement('div');
+            uploadWrapper.id = `upload-wrapper-${id}`;
+            uploadWrapper.style.display = 'flex';
+            uploadWrapper.style.alignItems = 'center';
+            uploadWrapper.style.marginBottom = '10px';
 
-                } else if (side === 'right') {
-                    tcxLayerRight = plotPolylineOnMap(data, map, tcxLayerRight, 'green');
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = '.tcx';
+            fileInput.className = 'button';
+            fileInput.style.backgroundColor = colors[(dataInput.length - 1) % colors.length]; // Cycle through the colours if more uploads than colours.
+            fileInput.addEventListener('change', (event) => handleFileUpload(event, id));
 
-                    // Plot HR vs Distance graph
-                    var ctx = document.getElementById(`hrDistanceGraphRight`).getContext('2d');
-                    chartRight = plotHrDistanceChart(data, ctx, chartRight, 'green')
-                    clearTcxButtonRight.style.display = 'inline-block';
-                }
+            const clearButton = document.createElement('button');
+            clearButton.textContent = `Clear`;
+            clearButton.className = 'button button-danger button-small';
+            clearButton.style.display = 'none';
+            clearButton.addEventListener('click', () => clearUploadData(id));
 
-            };
-            reader.readAsText(file);
+            // const removeButton = document.createElement('button');
+            // removeButton.id = 'remove-upload-button';
+            // removeButton.textContent = '-';
+            // removeButton.className = 'button button-small';
+            // removeButton.addEventListener('click', () => removeUploadField(dataInput.length - 1));
+
+            uploadWrapper.appendChild(fileInput);
+            uploadWrapper.appendChild(clearButton);
+            // if ((dataInput.length) > 2) uploadWrapper.appendChild(removeButton);
+            
+
+            uploadContainer.appendChild(uploadWrapper);
+
+            placeAddAndRemoveUploadButtons();
         }
 
-        function clearData(side) {
-            if (side === 'left') {
+        function placeAddAndRemoveUploadButtons()
+        {
+            // Delete the remove button so that it can be re-placed at the end. 
+            var addUploadButton = document.getElementById('remove-upload-button');
+            if (addUploadButton) addUploadButton.remove();
 
-                clearPolylineFromMap(tcxLayerLeft, map);
+            // Delete the add button so that it can be re-placed at the end.
+            var addUploadButton = document.getElementById('add-upload-button');
+            if (addUploadButton) addUploadButton.remove();
 
-                clearChartFromMap(chartLeft);
+            // The index of the last element of the input arrays.
+            const idOfLastUploadWrapper = dataInput.length - 1;
+            const lastUploadWrapper = document.getElementById(`upload-wrapper-${idOfLastUploadWrapper}`);
+            // const lastUploadWrapper = document.getElementById(`upload-wrapper-${dataInput.length - 1}`);
 
-                tcxUploadLeft.value = '';
-                clearTcxButtonLeft.style.display = 'none';
-            } else if (side === 'right') {
+            // console.log(`placeAddAndRemoveUploadButtons: upload-wrapper-${dataInput.length - 1}`);
 
-                clearPolylineFromMap(tcxLayerRight, map);
+            // Add the remove button to the right of the last upload wrapper.
+            // Only add it if there are more than 2 uploads already. Can't have less than two uploads.
+            if ((dataInput.length) > 2) {
+                const removeButton = document.createElement('button');
+                removeButton.id = 'remove-upload-button';
+                removeButton.textContent = '-';
+                removeButton.className = 'button button-small';
+                removeButton.addEventListener('click', () => removeUploadField());
+                lastUploadWrapper.appendChild(removeButton);
+            }
+            
+            // Add the add button to the bottom of the upload container.
+            if (dataInput.length < maxUploads) { 
+                addUploadButton = document.createElement('button');
+                addUploadButton.id = 'add-upload-button';
+                addUploadButton.textContent = '+';
+                addUploadButton.className = 'button button-small';
+                addUploadButton.addEventListener('click', createUploadField);
 
-                clearChartFromMap(chartRight);
-
-                tcxUploadRight.value = '';
-                clearTcxButtonRight.style.display = 'none';
+                uploadContainer.appendChild(addUploadButton);
             }
         }
 
-        // Handle TCX file upload for the Left Column
-        tcxUploadLeft.addEventListener('change', function (event) {
-            handleTcxFileUpload(event, 'left');
-        });
+        function placeDownloadButton(activityData) {
 
-        // Handle TCX file upload for the Right Column
-        tcxUploadRight.addEventListener('change', function (event) {
-            handleTcxFileUpload(event, 'right');
-        });
+            var downloadButton = document.getElementById('download-button');
+            if (downloadButton) downloadButton.remove();
 
+            downloadButton = document.createElement('button');
+            downloadButton.id = 'download-button';
+            downloadButton.textContent = `Download Appended Data as TCX`;
+            downloadButton.className = 'button-download button-small';
 
+            downloadButton.addEventListener("click", () => {
+                const tcxContent = formatXml(createTcxFile(activityData));
+                const blob = new Blob([tcxContent], { type: "application/xml" });
+                const url = URL.createObjectURL(blob);
 
+                const link = document.createElement("a");
+                link.href = url;
+                link.download = "activity.tcx";
+                link.click();
 
-        // Handle clear button for Left Column
-        clearTcxButtonLeft.addEventListener('click', function () {
-            clearData('left');
-        });
+                // Cleanup
+                URL.revokeObjectURL(url);
+            });
 
-        // Handle clear button for Right Column
-        clearTcxButtonRight.addEventListener('click', function () {
-            clearData('right');
-        });
+            document.getElementById("download-container").appendChild(downloadButton);
+        }
 
+        function handleFileUpload(event, id) {
 
+            // Load the file into the dataInput array.
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const parser = new DOMParser();
+                const xml = parser.parseFromString(e.target.result, 'text/xml');
+                const data = processTcxXml(xml);
+
+                if(dataInput[id]) {
+                    dataInput[id] = data;
+                }
+                else {
+                    dataInput[id] = data;
+                }
+                
+
+                // Handle the UI
+                const color = colors[id % colors.length]; // Cycle through the colours if more uploads than colours.
+                mapLayers[id] = plotPolylineOnMap(dataInput[id], map, mapLayers[id], color);
+                document.querySelector(`#upload-wrapper-${id} .button-danger`).style.display = 'inline-block';
+
+                placeDownloadButton(data);
+            };
+            reader.readAsText(file);
+
+            // console.log(dataInput[id]);
+
+        }
+
+        function clearUploadData(id) {
+
+            // Deleted the data from the dataInput array, if it exists.
+            if (dataInput[id]) dataInput[id] = null;
+            
+            // Handle the UI
+            clearPolylineFromMap(map, mapLayers[id]);
+            document.querySelector(`#upload-wrapper-${id} input`).value = '';
+            document.querySelector(`#upload-wrapper-${id} .button-danger`).style.display = 'none';
+        }
+
+        function removeUploadField() {
+            
+            // The index of the last element of the input arrays.
+            const idToRemove = dataInput.length-1;
+
+            // Remove the last element from the dataInput array.
+            dataInput.pop();
+
+            // Handler the UI.
+            clearUploadData(idToRemove);
+            document.getElementById(`upload-wrapper-${idToRemove}`).remove();
+
+            // console.log(`remove upload-wrapper-${idToRemove}`);
+
+            placeAddAndRemoveUploadButtons();
+        }
+
+        // Add initial upload fields
+        createUploadField();
+        createUploadField();
     </script>
 </body>
 </html>
