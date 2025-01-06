@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>File Upload and Download</title>
+</head>
+<body>
+  <h1>Upload and Download a Text File</h1>
+
+  <!-- File Upload -->
+  <label for="fileInput">Upload a file:</label>
+  <input type="file" id="fileInput" accept=".txt">
+  <br><br>
+
+  <!-- Download Link -->
+  <button id="downloadButton" disabled>Download File</button>
+
+  <script>
+    const fileInput = document.getElementById('fileInput');
+    const downloadButton = document.getElementById('downloadButton');
+    let fileContent = '';
+
+    // Event Listener for File Upload
+    fileInput.addEventListener('change', (event) => {
+      const file = event.target.files[0];
+
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          fileContent = e.target.result; // Store file content
+          alert('File uploaded successfully!');
+          downloadButton.disabled = false; // Enable download button
+        };
+        reader.readAsText(file); // Read the file as text
+      }
+    });
+
+    // Event Listener for File Download
+    downloadButton.addEventListener('click', () => {
+      const blob = new Blob([fileContent], { type: 'text/plain' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'downloaded_file.txt'; // Default file name
+      link.click(); // Trigger download
+    });
+  </script>
+</body>
+</html>
