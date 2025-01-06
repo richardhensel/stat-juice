@@ -18,6 +18,7 @@
         }
         .column {
             flex: 1;
+            width: 50%;
             padding: 10px;
             font-family: Arial, sans-serif;
             font-size: 16px;
@@ -44,12 +45,32 @@
             padding: 4px 8px;
             margin-left: 10px;
         }
-        .button-download {
+        .download-wrapper {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .download-box {
+            display: flex;
+            align-items: center;
+            background-color: purple;
+            /* height: 16px; */
+            width: 50%;
+
             padding: 8px 16px;
             margin: 10px 0;
-            background-color: #28a745;
-            color: #fff;
             border: none;
+            border-radius: 4px;
+            color: white;
+            font-size: 14px;
+        }
+
+        .button-download {
+            padding: 4px 8px;
+            /* margin: 4px 4px; */
+            background-color: #e9e7e7;
+            color: black;
+            /* border: none; */
             border-radius: 4px;
             cursor: pointer;
         }
@@ -69,7 +90,12 @@
         <!-- Right Column -->
         <div class="column">
             <h2>Append</h2>
-            <div id="download-container"></div>
+            <div id="download-container" class= "download-container">
+                <div id="download-wrapper" class="download-wrapper">
+                    <div id="download-box" class="download-box"></div>
+                </div>
+            </div>
+            
             <!-- <button id="add-upload-button" class="button">+</button> -->
         </div>
     </div>
@@ -90,12 +116,15 @@
         // let uploadCounter = 0;
 
         const mapLayers = Array(maxUploads).fill(null);
-        const colors = ['blue', 'green', 'red', 'purple', 'orange', 'brown', 'cyan'];
+        const colors = ['blue', 'green', 'red', 'magenta', 'brown', 'cyan', 'orange'];
 
         const uploadContainer = document.getElementById('upload-container');
 
         // List to store the data from uploaded files.
         var dataInput = [];
+
+        var outputMapLayer = null;
+        const outputColor = 'purple';
 
         function createUploadField() {
 
@@ -114,6 +143,7 @@
             fileInput.type = 'file';
             fileInput.accept = '.tcx';
             fileInput.className = 'button';
+            fileInput.style.width = '50%'; 
             fileInput.style.backgroundColor = colors[(dataInput.length - 1) % colors.length]; // Cycle through the colours if more uploads than colours.
             fileInput.addEventListener('change', (event) => handleFileUpload(event, id));
 
@@ -137,7 +167,14 @@
             uploadContainer.appendChild(uploadWrapper);
 
             placeAddAndRemoveUploadButtons();
+
+            checkAndMaybeClearOutputData();
         }
+
+        // TODO: Pass All UI inputs through a single function so that common actions can be performed.
+        // function handleUiEvent(event, eventType) {
+        //     console.log(event, eventType);
+        // }
 
         function placeAddAndRemoveUploadButtons()
         {
@@ -181,13 +218,18 @@
 
         function placeDownloadButton(activityData) {
 
+            const downloadName = 'activity_appended.tcx';
+
+            const downloadBox = document.getElementById('download-box');
+            downloadBox.textContent = '';
+
             var downloadButton = document.getElementById('download-button');
             if (downloadButton) downloadButton.remove();
 
             downloadButton = document.createElement('button');
             downloadButton.id = 'download-button';
-            downloadButton.textContent = `Download Appended Data as TCX`;
-            downloadButton.className = 'button-download button-small';
+            downloadButton.textContent = `Download`;
+            downloadButton.className = 'button-download';
 
             downloadButton.addEventListener("click", () => {
                 const tcxContent = formatXml(createTcxFile(activityData));
@@ -196,14 +238,32 @@
 
                 const link = document.createElement("a");
                 link.href = url;
-                link.download = "activity.tcx";
+                link.download = downloadName;
                 link.click();
 
                 // Cleanup
                 URL.revokeObjectURL(url);
             });
 
-            document.getElementById("download-container").appendChild(downloadButton);
+            const downloadTextBox = document.createElement('div');
+            downloadTextBox.id = 'download-text-box';
+            downloadTextBox.textContent = downloadName;
+            downloadTextBox.style.marginLeft = '2px';
+
+            downloadBox.appendChild(downloadButton);
+            downloadBox.appendChild(downloadTextBox);
+        }
+
+        function removeDownloadButton() {
+            var downloadButton = document.getElementById('download-button');
+            if (downloadButton) downloadButton.remove();
+
+            var downloadTextBox = document.getElementById('download-text-box');
+            if (downloadTextBox) downloadTextBox.remove();
+            
+
+            const downloadBox = document.getElementById('download-box');
+            downloadBox.textContent = 'Upload files to append them';
         }
 
         function handleFileUpload(event, id) {
@@ -218,20 +278,27 @@
                 const xml = parser.parseFromString(e.target.result, 'text/xml');
                 const data = processTcxXml(xml);
 
-                if(dataInput[id]) {
+                if(id in dataInput) {
                     dataInput[id] = data;
                 }
                 else {
-                    dataInput[id] = data;
+                    throw new Error("attempting to push data into a non-existent index");
                 }
                 
 
                 // Handle the UI
                 const color = colors[id % colors.length]; // Cycle through the colours if more uploads than colours.
-                mapLayers[id] = plotPolylineOnMap(dataInput[id], map, mapLayers[id], color);
+                // mapLayers[id] = plotPolylineOnMap(dataInput[id], map, mapLayers[id], color);
                 document.querySelector(`#upload-wrapper-${id} .button-danger`).style.display = 'inline-block';
 
-                placeDownloadButton(data);
+                // if (dataInput.every(element => element !== null)) {
+                //     const appendedData = appendActivitiesSimple(dataInput);
+                //     outputMapLayer = plotPolylineOnMap(appendedData, map, outputMapLayer, outputColor);
+
+                //     placeDownloadButton(appendedData);
+                // }
+
+                checkAndMaybeAppendData();
             };
             reader.readAsText(file);
 
@@ -248,6 +315,30 @@
             clearPolylineFromMap(map, mapLayers[id]);
             document.querySelector(`#upload-wrapper-${id} input`).value = '';
             document.querySelector(`#upload-wrapper-${id} .button-danger`).style.display = 'none';
+
+            // Refactor this. 
+            // if (!dataInput.every(element => element !== null)) {
+            //     clearPolylineFromMap(map, outputMapLayer);
+            //     removeDownloadButton();
+            // }
+
+            checkAndMaybeClearOutputData();
+        }
+
+        function checkAndMaybeAppendData() {
+            if (dataInput.every(element => element !== null)) {
+                const appendedData = appendActivitiesSimple(dataInput);
+                outputMapLayer = plotPolylineOnMap(appendedData, map, outputMapLayer, outputColor);
+
+                placeDownloadButton(appendedData);
+            }
+        }
+
+        function checkAndMaybeClearOutputData() {
+            if (!dataInput.every(element => element !== null)) {
+                clearPolylineFromMap(map, outputMapLayer);
+                removeDownloadButton();
+            }
         }
 
         function removeUploadField() {
@@ -265,6 +356,8 @@
             // console.log(`remove upload-wrapper-${idToRemove}`);
 
             placeAddAndRemoveUploadButtons();
+
+            checkAndMaybeAppendData();
         }
 
         // Add initial upload fields

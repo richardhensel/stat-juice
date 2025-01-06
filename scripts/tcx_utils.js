@@ -326,6 +326,60 @@ function processTcxXml(xml) {
     };
 }
 
+function appendActivitiesSimple(activityDataList) {
+    if (!Array.isArray(activityDataList) || activityDataList.length === 0) {
+        throw new Error("Input must be a non-empty array of activityData.");
+    }
+
+    // Initialize the appended activity with the metadata from the first activity
+    const appendedActivity = {
+        records: [],
+        laps: [],
+        activity: {
+            activityType: activityDataList[0].activity.activityType,
+            activityId: activityDataList[0].activity.activityId,
+            creator: activityDataList[0].activity.creator,
+            author: activityDataList[0].activity.author
+        }
+    };
+
+    let lastLapId = 0;
+    let lastDistance = 0;
+
+    // Iterate over each activityData in the input list
+    for (const activityData of activityDataList) {
+        // Adjust lap IDs and append laps
+        for (const lap of activityData.laps) {
+            const adjustedLap = {
+                ...lap,
+                lapId: lap.lapId + lastLapId
+            };
+            appendedActivity.laps.push(adjustedLap);
+        }
+
+        // Adjust record data and append records
+        for (const record of activityData.records) {
+            const adjustedRecord = {
+                ...record,
+                lapId: record.lapId + lastLapId,
+                distance: record.distance !== null ? record.distance + lastDistance : null
+            };
+            appendedActivity.records.push(adjustedRecord);
+        }
+
+        // Update lastLapId and lastDistance for the next iteration
+        lastLapId += activityData.laps.length;
+        if (activityData.records.length > 0) {
+            const lastRecord = activityData.records[activityData.records.length - 1];
+            if (lastRecord.distance !== null) {
+                lastDistance += lastRecord.distance;
+            }
+        }
+    }
+
+    return appendedActivity;
+}
+
 // Function to create a TCX file from activity data
 function createTcxFileBackup(activityData) {
     const xmlDoc = document.implementation.createDocument(null, "TrainingCenterDatabase", null);
