@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Map with Multiple TCX Files</title>
+    <title>Stat Juice</title>
     <!-- Include Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
@@ -77,19 +77,19 @@
     </style>
 </head>
 <body>
-    <h1>Append TCX Files</h1>
+    <h1 style="font-family: Arial, sans-serif;">Join multiple activity files</h1>
     <div id="map"></div>
     <div id="content">
         <!-- Left Column -->
         <div class="column">
-            <h2>Input files to be appended</h2>
+            <h2>Upload two or more activity files to be joined</h2>
             <div id="upload-container"></div>
             <!-- <button id="add-upload-button" class="button">+</button> -->
         </div>
 
         <!-- Right Column -->
         <div class="column">
-            <h2>Append</h2>
+            <h2>Download the joined activitiy</h2>
             <div id="download-container" class= "download-container">
                 <div id="download-wrapper" class="download-wrapper">
                     <div id="download-box" class="download-box"></div>
@@ -218,7 +218,7 @@
 
         function placeDownloadButton(activityData) {
 
-            const downloadName = 'activity_appended.tcx';
+            const downloadName = 'activity_joined.tcx';
 
             const downloadBox = document.getElementById('download-box');
             downloadBox.textContent = '';
@@ -263,7 +263,7 @@
             
 
             const downloadBox = document.getElementById('download-box');
-            downloadBox.textContent = 'Upload files to append them';
+            downloadBox.textContent = 'Upload a file into each input box';
         }
 
         function handleFileUpload(event, id) {
