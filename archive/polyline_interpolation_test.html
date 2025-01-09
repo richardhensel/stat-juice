@@ -54,22 +54,17 @@
 <body>
     <h1>Interpolation Test</h1>
     <div id="map"></div>
-    <div 
+    <!-- <div 
         id="instructions"
         style="font-family: Arial, sans-serif;"> 
         Click the map to fill waypoints from the Start to the End point.<br>
         Lines are fixed once blue. New waypoints affect the red line only. <br>
         Click 'Clear Waypoints' to start again at any time. <br>
         Click 'Use Waypoints' to accept the path you have defined.
-
-    </div>
-    <div id="coordinates">Mouse Coordinates: (Lat, Lng)</div>
+    </div> -->
     
-    <div>
-        <strong>Waypoint list</strong>
-        <button id="clear-button" style="display: none;">Clear Waypoints</button>
-        <div id="coordinate-list">Click map to add waypoints</div>
-    </div>
+    <div id="file-amend-ui-container"></div>
+    
 
     <!-- Include Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -85,9 +80,17 @@
         }).addTo(map);
 
         // Reference the coordinates display div and coordinates list div
-        var coordinatesDiv = document.getElementById('coordinates');
-        var coordinateListDiv = document.getElementById('coordinate-list');
-        var clearButton = document.getElementById('clear-button');
+        // var coordinatesDiv = document.getElementById('coordinates');
+        //var coordinateListDiv = document.getElementById('coordinate-list');
+        // var clearButton = document.getElementById('clear-button');
+
+        var clearButton = document.createElement('button');
+        clearButton.id = 'clear-button';
+        clearButton.textContent = 'Clear Waypoints';
+        clearButton.style.display = 'none';
+        clearButton.className = 'clear-button';
+
+
 
         // Array to store clicked coordinates
         var clickedCoordinates = [];
@@ -112,11 +115,11 @@
         drawStuff();
 
         // Add an event listener for mouse movement on the map
-        map.on('mousemove', function (e) {
-            var lat = e.latlng.lat.toFixed(6); // Round latitude to 6 decimal places
-            var lng = e.latlng.lng.toFixed(6); // Round longitude to 6 decimal places
-            coordinatesDiv.textContent = `Mouse Coordinates: (${lat}, ${lng})`;
-        });
+        // map.on('mousemove', function (e) {
+        //     var lat = e.latlng.lat.toFixed(6); // Round latitude to 6 decimal places
+        //     var lng = e.latlng.lng.toFixed(6); // Round longitude to 6 decimal places
+        //     coordinatesDiv.textContent = `Mouse Coordinates: (${lat}, ${lng})`;
+        // });
 
         // Add an event listener for mouse clicks on the map
         map.on('click', function (e) {
@@ -133,7 +136,46 @@
             }
         });
 
-        function displayEditModeUi() {
+        function displayFileUploadUi() {
+            // Upload box
+            // When file is loaded, plot the original activity in blue
+            // Then search the activity for gaps
+            // Then show the displayFindGapsUi
+            
+
+        }
+
+        function displayFindGapsUi() {
+            // if there are one or more gaps, 
+                // plot these in red
+                // Number the gaps
+                // show a button to edit the first gap
+            // else
+                // Print that there are no gaps and nothing to do
+
+
+            // If user presses the edit button, show the displayEditGapUi, for the first gap.
+
+
+        }
+
+        function displaySingleGapUi() {
+            // show the surrounding track in blue
+            // Show this one gap in red. This shows current state, and will be 
+            // zoom the map view to just this gap
+            // Show a button to edit the gap
+                // if button pressed, show the displayEditGapUi
+            // Show a button to accept and move on
+
+        }
+
+        function displayEditGapUi() {
+            // show a button to exit edit mode with no changes
+                // go back to the 
+            // show a button to accept the changes. 
+                // if button pressed, update the gap points and displaySingleGapUi()
+            // if at least one waypoint has been added, show a button to clear and start again
+                // if button pressed, show the original gap again.
 
         }
 
@@ -143,12 +185,14 @@
 
 
 
+
+
         function drawStuff() {
 
             allWaypoints = [startAndEndWaypoints[0], ...clickedCoordinates, startAndEndWaypoints[1]];
 
             // Update the coordinate list display
-            coordinateListDiv.textContent = allWaypoints.map(coord => `(${coord[0]}, ${coord[1]})`).join('\n');
+            // coordinateListDiv.textContent = allWaypoints.map(coord => `(${coord[0]}, ${coord[1]})`).join('\n');
 
             // Show the clear button if the list has items
             if (clickedCoordinates.length > 0) {
@@ -360,7 +404,7 @@
         clearButton.addEventListener('click', function () {
             // Clear the coordinates list
             clickedCoordinates = [];
-            coordinateListDiv.textContent = 'No coordinates yet.';
+            // coordinateListDiv.textContent = 'No coordinates yet.';
 
             // Remove the current layer from the map
             if (polylineLayers.length>0) {

@@ -124,6 +124,10 @@
         var dataInput = [];
 
         var outputMapLayer = null;
+
+        // Temp testing of gap identification
+        var gapLayers = [];
+
         const outputColor = 'purple';
 
         function createUploadField() {
@@ -331,6 +335,32 @@
                 outputMapLayer = plotPolylineOnMap(appendedData, map, outputMapLayer, outputColor);
 
                 placeDownloadButton(appendedData);
+
+
+                // Temp testing of gap identification
+                const gapIndexPairs = identifyPositionDropouts(appendedData, 60);
+                // console.log(gapIndexPairs);
+                var gaps = [];
+
+                gapIndexPairs.forEach(indexPair => {
+                    // console.log(appendedData);
+                    // console.log(indexPair);
+        
+                    gaps.push(extractSubarray(appendedData.records, indexPair));
+                });
+
+                // console.log(gaps);
+                gapLayers = Array(gaps.length).fill(null);
+
+                for (let i=0; i<gaps.length; i++) {
+                    // console.log(gaps[i]);
+                    var activity = {records: gaps[i]};
+                    gapLayers[i] = plotPolylineOnMap(activity, map, gapLayers[i], 'black');
+                    // setTimeout(() => clearPolylineFromMap(map, gapLayer), 5000);
+                    
+                }
+
+
             }
         }
 
@@ -338,6 +368,11 @@
             if (!dataInput.every(element => element !== null)) {
                 clearPolylineFromMap(map, outputMapLayer);
                 removeDownloadButton();
+
+                // Temp testing of gap identification
+                gapLayers.forEach(layer => {
+                    clearPolylineFromMap(map, layer);
+                });
             }
         }
 
