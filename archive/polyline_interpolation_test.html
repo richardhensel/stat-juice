@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>interpolation test</title>
+    <!-- Include Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        /* Style the map container */
+        #map {
+            height: 500px; /* Adjust height as needed */
+            width: 100%;
+            border: 2px solid #000; /* Optional: A border around the map */
+        }
+
+        #coordinates, #coordinate-list, #clear-button {
+            margin-top: 10px;
+            font-family: Arial, sans-serif;
+            font-size: 16px;
+        }
+        #coordinate-list {
+            white-space: pre-wrap;
+            border: 1px solid #ccc;
+            padding: 10px;
+            background-color: #f9f9f9;
+            height: 150px;
+            overflow-y: auto; /* Scrollable if the list becomes long */
+        }
+        #clear-button {
+            padding: 8px 16px;
+            background-color: #d9534f; /* Red background */
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        #clear-button:hover {
+            background-color: #c9302c;
+        }
+
+        .custom-text-icon {
+            font-size: 20px;
+            color: red;
+            background-color: transparent;
+            /* padding: 5px; */
+            border: none;
+            /* border-radius: 3px;
+            white-space: nowrap; */
+        }
+
+    </style>
+</head>
+<body>
+    <h1>Interpolation Test</h1>
+    <div id="map"></div>
+    <div 
+        id="instructions"
+        style="font-family: Arial, sans-serif;"> 
+        Click the map to fill waypoints from the Start to the End point.<br>
+        Lines are fixed once blue. New waypoints affect the red line only. <br>
+        Click 'Clear Waypoints' to start again at any time. <br>
+        Click 'Use Waypoints' to accept the path you have defined.
+
+    </div>
+    <div id="coordinates">Mouse Coordinates: (Lat, Lng)</div>
+    
+    <div>
+        <strong>Waypoint list</strong>
+        <button id="clear-button" style="display: none;">Clear Waypoints</button>
+        <div id="coordinate-list">Click map to add waypoints</div>
+    </div>
+
+    <!-- Include Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="../scripts/geometry_utils.js"></script>
+    <script>
+        // Initialize the map
+        var map = L.map('map').setView([-27.48, 153.0], 13); // Centered at Brisbane
+
+        // Add a tile layer (OpenStreetMap)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Reference the coordinates display div and coordinates list div
+        var coordinatesDiv = document.getElementById('coordinates');
+        var coordinateListDiv = document.getElementById('coordinate-list');
+        var clearButton = document.getElementById('clear-button');
+
+        // Array to store clicked coordinates
+        var clickedCoordinates = [];
+
+        // Variable to hold the current marker or polyline
+        var polylineLayers = [];
+        var distanceMarkerLayers = [];
+        var textMarkerLayers = [];
+        var layer;
+        
+
+        var startAndEndWaypoints = [[-27.492129, 153.013128], [-27.499933, 153.020102]];
+
+        const numberOfIntermediateTrackPoints = 100;
+
+        var allWaypoints = null;
+
+        var distances = [500, 2180, 10000];
+
+        var editWaypointsMode = true;
+
+        drawStuff();
+
+        // Add an event listener for mouse movement on the map
+        map.on('mousemove', function (e) {
+            var lat = e.latlng.lat.toFixed(6); // Round latitude to 6 decimal places
+            var lng = e.latlng.lng.toFixed(6); // Round longitude to 6 decimal places
+            coordinatesDiv.textContent = `Mouse Coordinates: (${lat}, ${lng})`;
+        });
+
+        // Add an event listener for mouse clicks on the map
+        map.on('click', function (e) {
+
+            if (editWaypointsMode){
+
+                // Add the clicked coordinate to the list
+                var lat = e.latlng.lat.toFixed(6);
+                var lng = e.latlng.lng.toFixed(6);
+                clickedCoordinates.push([parseFloat(lat), parseFloat(lng)]);            
+
+                drawStuff();
+
+            }
+        });
+
+        function displayEditModeUi() {
+
+        }
+
+        function displayNonEditModeUi() {
+            
+        }
+
+
+
+        function drawStuff() {
+
+            allWaypoints = [startAndEndWaypoints[0], ...clickedCoordinates, startAndEndWaypoints[1]];
+
+            // Update the coordinate list display
+            coordinateListDiv.textContent = allWaypoints.map(coord => `(${coord[0]}, ${coord[1]})`).join('\n');
+
+            // Show the clear button if the list has items
+            if (clickedCoordinates.length > 0) {
+                clearButton.style.display = 'inline-block';
+            }
+
+            // Clear the existing layer (if any) before adding new markers/polylines
+            // if (polylineLayer) {
+            //     map.removeLayer(polylineLayer);
+            // }
+
+            if (polylineLayers.length>0) {
+                polylineLayers.forEach(layer => {
+                    map.removeLayer(layer);
+                });
+                polylineLayers = [];
+            }
+
+            // if (distanceMarkerLayer) {
+            //     map.removeLayer(distanceMarkerLayer);
+            // }
+
+            if (distanceMarkerLayers.length>0) {
+                distanceMarkerLayers.forEach(layer => {
+                    map.removeLayer(layer);
+                });
+                distanceMarkerLayers = [];
+            }
+
+            if (textMarkerLayers.length>0) {
+                textMarkerLayers.forEach(layer => {
+                    map.removeLayer(layer);
+                });
+                textMarkerLayers = [];
+            }
+
+            // If there's only one coordinate, place a blue dot
+            // if (allWaypoints.length === 1) {
+            //     polylineLayer = L.circleMarker(allWaypoints[0], {
+            //         color: 'blue',
+            //         radius: 8 // Adjust the size of the dot
+            //     }).addTo(map);
+            // } 
+            // If there are multiple coordinates, draw a blue polyline
+            if (allWaypoints.length>1) {
+                layer = L.polyline(allWaypoints, {
+                    color: 'blue',
+                    weight: 4, // Line thickness
+                    opacity: 0.8
+                }).addTo(map);
+
+                polylineLayers.push(layer);
+
+                if (editWaypointsMode){
+
+                    const lastLine = [allWaypoints[allWaypoints.length-2], allWaypoints[allWaypoints.length-1]];
+
+                    // plot a guide showing where to click
+                    // plot a line between second last and last waypoints.
+                    layer = L.polyline(lastLine, {
+                        color: 'red',
+                        weight: 4, // Line thickness
+                        // opacity: 0.8,
+                        // dashArray: '5, 10' // Defines the pattern of dashes and gaps
+                    }).addTo(map);
+
+                    polylineLayers.push(layer);
+
+                    const distanceBetweenLastElements = calculatePolylineLength(lastLine);
+                    const result = findPointOnPolyline(lastLine, distanceBetweenLastElements/2);
+
+                    const size = 15;
+                        layer = L.marker(result, {
+                            icon: L.divIcon({
+                                className: '', // No extra classes
+                                // html: `
+                                //     <div style="
+                                //         display: flex; 
+                                //         justify-content: center; 
+                                //         align-items: center; 
+                                //         width: ${size}px; 
+                                //         height: ${size}px; 
+                                //         border-radius: 50%; 
+                                //         background-color: red;
+                                //         color: white; 
+                                //         font-size: 5px; 
+                                //         font-weight: bold;
+                                //         text-align: center;">
+                                //         ''
+                                //     </div>
+                                // `,
+                                html: `
+                                    <div style="
+                                        display: flex; 
+                                        justify-content: center; 
+                                        align-items: center; 
+                                        width: ${size}px; 
+                                        height: ${size}px; 
+                                        border-radius: 50%; 
+                                        background-color: rgba(255, 0, 0, 0.7);
+                                        color: white; 
+                                        font-size: 10px; 
+                                        font-weight: bold;
+                                        text-align: center;">
+                                        O
+                                    </div>
+                                `,
+                                iconSize: [size, size], // Match the size of the circle
+                                iconAnchor: [size/2, size/2], // Center the icon on the coordinate
+                            }),
+                        }).addTo(map);
+
+                        textMarkerLayers.push(layer);
+
+                    for (let i = 0; i<allWaypoints.length; i++) {
+
+
+                        // Plot text numbers over the waypoints
+                        var text = '';
+                        if (i==0) {
+                            text = 'start';
+                        }
+                        else if (i==allWaypoints.length-1) {
+                            text = 'end';
+                        }
+                        else {
+                            text = `${i}`;
+                        }
+
+                        // layer = L.marker(allWaypoints[i], {
+                        //     icon: L.divIcon({
+                        //         className: 'custom-text-icon', // Custom class for styling
+                        //         html: text, // The text to display
+                        //         // html: '<span style="font-size: 10px; color: red; background: transparent; border: none;">' + text + '</span>',
+                        //         // html: '<span style="font-size: 10px; color: red;"">' + text + '</span>',
+                        //         iconSize: null, // No icon size, so it adjusts to text
+                        //     }),
+                        // }).addTo(map);
+                        const size = 20;
+                        layer = L.marker(allWaypoints[i], {
+                            icon: L.divIcon({
+                                className: '', // No extra classes
+                                html: `
+                                    <div style="
+                                        display: flex; 
+                                        justify-content: center; 
+                                        align-items: center; 
+                                        width: ${size}px; 
+                                        height: ${size}px; 
+                                        border-radius: 50%; 
+                                        background-color: blue;
+                                        background-opacity: 0.7;
+                                        color: white; 
+                                        font-size: 9px; 
+                                        font-weight: bold;
+                                        text-align: center;">
+                                        ${text}
+                                    </div>
+                                `,
+                                iconSize: [size, size], // Match the size of the circle
+                                iconAnchor: [size/2, size/2], // Center the icon on the coordinate
+                            }),
+                        }).addTo(map);
+
+                        textMarkerLayers.push(layer);
+
+                    }
+
+                    const totalPolylineDistance = calculatePolylineLength(allWaypoints);
+                    const distancePerIncrement = totalPolylineDistance/(numberOfIntermediateTrackPoints+1);
+
+                    var runningDistance = 0;
+
+                    for (let i = 0; i < numberOfIntermediateTrackPoints; i++) {
+                        runningDistance += distancePerIncrement;
+
+                        const pointResult  = findPointOnPolyline(allWaypoints, runningDistance);
+
+                        if (pointResult.error) {
+                            console.error(`Error: ${pointResult.error}`);
+                        } else {
+                        //     layer = L.circleMarker(pointResult, {
+                        //         color: 'red',
+                        //         radius: 2 // Adjust the size of the dot
+                        //     }).addTo(map);
+
+                        //     distanceMarkerLayers.push(layer);
+                        }
+
+                    }
+
+                    
+
+
+                }
+
+            }
+
+            // Zoom the map to fit the polyline
+            // map.fitBounds(polyline.getBounds());
+
+        }
+
+        
+
+        
+
+        // Add an event listener for the clear button
+        clearButton.addEventListener('click', function () {
+            // Clear the coordinates list
+            clickedCoordinates = [];
+            coordinateListDiv.textContent = 'No coordinates yet.';
+
+            // Remove the current layer from the map
+            if (polylineLayers.length>0) {
+                polylineLayers.forEach(layer => {
+                    map.removeLayer(layer);
+                });
+                polylineLayers = [];
+            }
+
+            if (distanceMarkerLayers.length>0) {
+                distanceMarkerLayers.forEach(layer => {
+                    map.removeLayer(layer);
+                });
+                distanceMarkerLayers = [];
+            }
+
+            if (textMarkerLayers.length>0) {
+                textMarkerLayers.forEach(layer => {
+                    map.removeLayer(layer);
+                });
+                textMarkerLayers = [];
+            }
+            
+
+            // Hide the clear button if the list is empty
+            clearButton.style.display = 'none';
+            drawStuff();
+
+        });
+    </script>
+</body>
+</html>

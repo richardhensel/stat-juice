@@ -16,39 +16,96 @@
     </script>
 
     <!-- Load the fit-parser library -->
-    <script src="https://cdn.jsdelivr.net/npm/fit-file-parser@1.21.0/dist/fit-parser.min.js"></script>
+    <script src="../scripts/fit-parser.js"></script>
 
     <script>
         // Access the `FitParser` class from `exports`
-        const FitParser = exports.default;
+        // const FitParser = exports.default;
+
+
+
+
+
+        document.getElementById('fitFileInput').onchange = function () {
+            const file = this.files[0];
+
+            const reader = new FileReader();
+
+            reader.onload = function (e) {
+                let blob = e.target.result; // it contains an ArrayBuffer
+
+                console.log(blob.length);
+                
+                const fitParser = new FitParser({
+                        force: true,
+                        speedUnit: 'km/h',
+                        lengthUnit: 'm',
+                        temperatureUnit: 'celsius',
+                        elapsedRecordField: true,
+                        mode: 'list',
+                    });
+
+                    fitParser.parse(file, function (error, data) {
+                        if (error) {
+                            // errorNoFile(error, filename, 2);
+                            // remove the latest added options in the files
+                            console.log(error);		
+                        } else {
+                            // let timeEndParsing = performance.now();
+                            // console.log('file parsing takes: ' + parseFloat(timeEndParsing - timeStartParsing) + ' ms');
+                            console.log(data);
+                            // prepareFitData(data);
+                        }
+                    });
+            }
+
+            reader.readAsArrayBuffer(file);
+        }
+
+
+
+
+
 
         // Ensure the script works when a .FIT file is selected
-        document.getElementById('fitFileInput').addEventListener('change', (event) => {
-            const file = event.target.files[0];
+        // document.getElementById('fitFileInput').addEventListener('change', (event) => {
+        //     const file = event.target.files[0];
 
-            if (file) {
-                const reader = new FileReader();
+        //     if (file) {
+        //         const reader = new FileReader();
 
-                reader.onload = (e) => {
-                    const fitParser = new FitParser();
+        //         reader.onload = (e) => {
 
-                    fitParser.parse(e.target.result, (error, result) => {
-                        if (error) {
-                            console.error('Error parsing FIT file:', error);
-                            document.getElementById('output').textContent = `Error: ${error.message}`;
-                            return;
-                        }
+        //             const fitParser = new FitParser({
+        //                 force: true,
+        //                 speedUnit: 'km/h',
+        //                 lengthUnit: 'm',
+        //                 temperatureUnit: 'celsius',
+        //                 elapsedRecordField: true,
+        //                 mode: 'list',
+        //             });
 
-                        console.log('Parsed FIT file:', result);
-                        document.getElementById('output').textContent = JSON.stringify(result, null, 2);
-                    });
-                };
+        //             fitParser.parse(file, function (error, data) {
+        //                 if (error) {
+        //                     // errorNoFile(error, filename, 2);
+        //                     // remove the latest added options in the files
+        //                     console.log(error);		
+        //                 } else {
+        //                     // let timeEndParsing = performance.now();
+        //                     // console.log('file parsing takes: ' + parseFloat(timeEndParsing - timeStartParsing) + ' ms');
+        //                     console.log(data);
+        //                     // prepareFitData(data);
+        //                 }
+        //             });
 
-                reader.readAsArrayBuffer(file); // Read file as an ArrayBuffer
-            } else {
-                alert('No file selected!');
-            }
-        });
+
+        //         };
+
+        //         reader.readAsArrayBuffer(file); // Read file as an ArrayBuffer
+        //     } else {
+        //         alert('No file selected!');
+        //     }
+        // });
     </script>
 </body>
 </html>
