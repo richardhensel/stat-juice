@@ -104,6 +104,7 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="scripts/tcx_utils.js"></script>
     <script src="scripts/plotting_utils.js"></script>
+    <script src="scripts/geometry_utils.js"></script>
     <script>
         // Initialize the map and set a default tile layer
         const map = L.map('map').setView([-27.48, 153.0], 13);
@@ -339,15 +340,17 @@
 
                 // Temp testing of gap identification
                 const gapIndexPairs = identifyPositionDropouts(appendedData, 60);
-                // console.log(gapIndexPairs);
+                console.log(gapIndexPairs);
                 var gaps = [];
 
-                gapIndexPairs.forEach(indexPair => {
-                    // console.log(appendedData);
-                    // console.log(indexPair);
+                // gapIndexPairs.forEach(indexPair => {
+                //     console.log(appendedData.records);
+                //     console.log(indexPair);
         
-                    gaps.push(extractSubarray(appendedData.records, indexPair));
-                });
+                //     gaps.push(extractSubarray(appendedData.records, indexPair));
+                // });
+
+                gaps.push(extractSubarray(appendedData.records, gapIndexPairs[6]));
 
                 // console.log(gaps);
                 gapLayers = Array(gaps.length).fill(null);
