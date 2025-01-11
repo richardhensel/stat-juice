@@ -86,8 +86,7 @@ function findPointOnPolyline(polyline, distance) {
 
 // There is a bug here. If the dropout is at the start or end of the activity, the first index will be null.
 
-
-function identifyPositionDropouts(activityData, maxTimeGapSeconds) {
+function identifyPositionDropoutsWithBug(activityData, maxTimeGapSeconds) {
     if (!activityData || !Array.isArray(activityData.records)) {
         throw new Error("Invalid activity data or records array.");
     }
@@ -129,6 +128,49 @@ function identifyPositionDropouts(activityData, maxTimeGapSeconds) {
 
     return dropouts; // List of bounding indices for each dropout
 
+}
+
+function identifyPositionDropouts(activityData, maxTimeGapSeconds) {
+    if (!activityData || !Array.isArray(activityData.records)) {
+        throw new Error("Invalid activity data or records array.");
+    }
+
+    const records = activityData.records;
+    const dropouts = []; // List to store dropout bounding indices
+    let dropoutStartIndex = null; // Index of the first null position
+    let dropoutEndIndex = null; // Index of the last null position
+    let lastNonNullIndex = null; // Index of the last non-null position
+
+    for (let i = 0; i < records.length; i++) {
+        const record = records[i];
+        const position = record.position;
+        const timestamp = new Date(record.timestamp).getTime();
+
+        if (position[0] !== null && position[1] !== null) {
+            // Position is non-null
+            if (dropoutStartIndex !== null) {
+                // Check if the timing gap is within the allowed threshold
+                const timeGap = (timestamp - new Date(records[dropoutEndIndex].timestamp).getTime()) / 1000;
+
+                if (timeGap <= maxTimeGapSeconds && lastNonNullIndex !== null) {
+                    // Add dropout bounding indices to the result
+                    dropouts.push([lastNonNullIndex, i]); 
+                }
+                // Reset dropout tracking
+                dropoutStartIndex = null;
+                dropoutEndIndex = null;
+            }
+            lastNonNullIndex = i;
+        } else {
+            // Position is null
+            if (dropoutStartIndex === null) {
+                dropoutStartIndex = i; // Start of null values
+            }
+            dropoutEndIndex = i; // Update the end of null values
+        }
+    }
+
+    return dropouts; // List of bounding indices for each dropout
 }
 
 function extractSubarray(array, index_bounds) {
@@ -248,23 +290,39 @@ class ActivityDropoutHandler {
         this.activity = JSON.parse(JSON.stringify(activity)); // Working copy of the activity
         this.minDropoutDistance = minDropoutDistance;
         this.maxTimeGapSeconds = maxTimeGapSeconds;
-        this.dropouts = identifyPositionDropouts(this.activity, this.maxTimeGapSeconds);
-    }
-
-    getDropouts() {
-        return this.dropouts.map(([startIndex, endIndex]) => {
+        this.dropoutBoundingIndices = identifyPositionDropouts(this.activity, this.maxTimeGapSeconds);
+        
+        this.dropoutBoundingPositions = this.dropoutBoundingIndices.map(([startIndex, endIndex]) => {
             const startPosition = this.activity.records[startIndex]?.position;
             const endPosition = this.activity.records[endIndex]?.position;
             return { startPosition, endPosition };
         });
+
+        
+    }
+
+    getDropouts() {
+        console.log("bounding indices")
+        console.log(this.dropoutBoundingIndices);
+
+        console.log("bounding positions")
+        console.log(this.dropoutBoundingPositions);
+
+        // return this.dropoutBoundingIndices.map(([startIndex, endIndex]) => {
+        //     const startPosition = this.activity.records[startIndex]?.position;
+        //     const endPosition = this.activity.records[endIndex]?.position;
+        //     return { startPosition, endPosition };
+        // });
+
+        return this.dropoutBoundingPositions;
     }
 
     remapDropout(dropoutId, roughPolyline) {
-        if (dropoutId < 0 || dropoutId >= this.dropouts.length) {
+        if (dropoutId < 0 || dropoutId >= this.dropoutBoundingIndices.length) {
             throw new Error("Invalid dropout ID.");
         }
 
-        const [startIndex, endIndex] = this.dropouts[dropoutId];
+        const [startIndex, endIndex] = this.dropoutBoundingIndices[dropoutId];
         const numberOfDropoutTrackPoints = endIndex - startIndex - 1;
 
         if (!Array.isArray(roughPolyline) || roughPolyline.length < 2) {
@@ -301,11 +359,11 @@ class ActivityDropoutHandler {
     }
 
     resetDropout(dropoutId) {
-        if (dropoutId < 0 || dropoutId >= this.dropouts.length) {
+        if (dropoutId < 0 || dropoutId >= this.dropoutBoundingIndices.length) {
             throw new Error("Invalid dropout ID.");
         }
 
-        const [startIndex, endIndex] = this.dropouts[dropoutId];
+        const [startIndex, endIndex] = this.dropoutBoundingIndices[dropoutId];
         const originalSection = extractSubarray(this.originalActivity.records, [startIndex + 1, endIndex - 1]);
 
         for (let i = startIndex + 1; i < endIndex; i++) {

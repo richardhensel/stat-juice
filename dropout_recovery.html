@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,32 +10,54 @@
     <style>
         /* Style the map container */
         #map {
-            height: 500px; /* Adjust height as needed */
+            height: 500px;
+            /* Adjust height as needed */
             width: 100%;
-            border: 2px solid #000; /* Optional: A border around the map */
+            border: 2px solid #000;
+            /* Optional: A border around the map */
         }
 
-        #coordinates, #coordinate-list, #clear-button {
+        #content {
+            display: flex;
+            margin-top: 20px;
+        }
+
+        .column {
+            flex: 1;
+            width: 50%;
+            padding: 10px;
+            font-family: Arial, sans-serif;
+            font-size: 16px;
+        }
+
+        #coordinates,
+        #coordinate-list,
+        #clear-button {
             margin-top: 10px;
             font-family: Arial, sans-serif;
             font-size: 16px;
         }
+
         #coordinate-list {
             white-space: pre-wrap;
             border: 1px solid #ccc;
             padding: 10px;
             background-color: #f9f9f9;
             height: 150px;
-            overflow-y: auto; /* Scrollable if the list becomes long */
+            overflow-y: auto;
+            /* Scrollable if the list becomes long */
         }
+
         #clear-button {
             padding: 8px 16px;
-            background-color: #d9534f; /* Red background */
+            background-color: #d9534f;
+            /* Red background */
             color: #fff;
             border: none;
             border-radius: 4px;
             cursor: pointer;
         }
+
         #clear-button:hover {
             background-color: #c9302c;
         }
@@ -49,11 +72,18 @@
             white-space: nowrap; */
         }
 
+        .ui-wrapper {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
         .download-wrapper {
             display: flex;
             align-items: center;
             margin-bottom: 10px;
         }
+
         .download-box {
             display: flex;
             align-items: center;
@@ -78,9 +108,9 @@
             border-radius: 4px;
             cursor: pointer;
         }
-
     </style>
 </head>
+
 <body>
     <h1>Interpolation Test</h1>
     <div id="map"></div>
@@ -92,19 +122,42 @@
         Click 'Clear Waypoints' to start again at any time. <br>
         Click 'Use Waypoints' to accept the path you have defined.
     </div> -->
-    
-    <div id="file-amend-ui-container"></div>
-    <div id="download-container" class= "download-container">
-        <div id="download-wrapper" class="download-wrapper">
-            <div id="download-box" class="download-box" style="display: none;"></div>
+
+    <div id="content">
+        <!-- Left Column -->
+        <div class="column">
+            <!-- <h2>Upload two or more activity files to be joined</h2> -->
+            <div id="ui-container">
+                <!-- <div id="file-upload" class="ui-wrapper" style="display: none;"></div>
+                <div id="display-gaps" class="ui-wrapper" style="display: none;"></div>
+                <div id="display-single-gap" class="ui-wrapper" style="display: none;"></div>
+                <div id="edit-single-gap" class="ui-wrapper" style="display: none;"></div>
+                <div id="summary-and-download" class="ui-wrapper" style="display: none;"></div> -->
+
+
+
+            </div>
+
+            <!-- <button id="add-upload-button" class="button">+</button> -->
         </div>
+
+        <!-- Right Column -->
+        <!-- <div class="column"> -->
+        <!-- <h2>Download the joined activitiy</h2> -->
+        <!-- <div id="download-container" class= "download-container"> -->
+        <!-- <div id="download-wrapper" class="download-wrapper"> -->
+        <!-- <div id="download-box" class="download-box" style="display: none;"></div> -->
+        <!-- </div> -->
+        <!-- </div> -->
+        <!-- </div> -->
     </div>
-    
+
+
 
     <!-- Include Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="../scripts/geometry_utils.js"></script>
-    <script src="../scripts/tcx_utils.js"></script>
+    <script src="scripts/geometry_utils.js"></script>
+    <script src="scripts/tcx_utils.js"></script>
     <script>
         // Initialize the map
         var map = L.map('map').setView([-27.48, 153.0], 13); // Centered at Brisbane
@@ -116,9 +169,9 @@
         }).addTo(map);
 
         // Reference the coordinates display div and coordinates list div
-        // var coordinatesDiv = document.getElementById('coordinates');
-        //var coordinateListDiv = document.getElementById('coordinate-list');
-        // var clearButton = document.getElementById('clear-button');
+        var coordinatesDiv = document.getElementById('coordinates');
+        var coordinateListDiv = document.getElementById('coordinate-list');
+        var clearButton = document.getElementById('clear-button');
 
         var clearButton = document.createElement('button');
         clearButton.id = 'clear-button';
@@ -132,19 +185,27 @@
         acceptButton.style.display = 'none';
         acceptButton.className = 'clear-button';
 
-        var container = document.getElementById('file-amend-ui-container');
+        var container = document.getElementById('ui-container');
         container.appendChild(clearButton);
         container.appendChild(acceptButton);
+
+        var activityDataInput = null;
 
         // Array to store clicked coordinates
         var clickedCoordinates = [];
 
+        var fullActivityPlotLayers = [];
+        var dropoutPlotLayers = [];
+        var dropoutWaypointPlotLayers = [];
+
         // Variable to hold the current marker or polyline
         var polylineLayers = [];
+
+
         var distanceMarkerLayers = [];
         var textMarkerLayers = [];
         var layer;
-        
+
 
         // var startAndEndWaypoints = [[-27.492129, 153.013128], [-27.499933, 153.020102]];
 
@@ -158,7 +219,7 @@
 
         var editWaypointsMode = true;
 
-        var handler = null; 
+        var handler = null;
 
         var dropouts = null;
 
@@ -166,7 +227,9 @@
 
         const dropoutIndexToUse = 1;
 
-        drawStuff();
+        displayFileUploadUi();
+
+        // drawStuff();
 
         // Add an event listener for mouse movement on the map
         // map.on('mousemove', function (e) {
@@ -178,34 +241,278 @@
         // Add an event listener for mouse clicks on the map
         map.on('click', function (e) {
 
-            if (editWaypointsMode){
+            if (editWaypointsMode) {
 
                 // Add the clicked coordinate to the list
                 var lat = e.latlng.lat.toFixed(6);
                 var lng = e.latlng.lng.toFixed(6);
-                clickedCoordinates.push([parseFloat(lat), parseFloat(lng)]);            
+                clickedCoordinates.push([parseFloat(lat), parseFloat(lng)]);
 
                 drawStuff();
 
             }
         });
 
+        function deleteElementFromDocument(elementId) {
+            element = document.getElementById(elementId)
+            if (element) element.remove();
+        }
+
+
+        function clearAllUi() {
+
+            // document.getElementById('file-upload').style.display = 'none';
+            // document.getElementById('display-gaps').style.display = 'none';
+            // document.getElementById('display-single-gap').style.display = 'none';
+            // document.getElementById('edit-single-gap').style.display = 'none';
+            // document.getElementById('summary-and-download').style.display = 'none';
+
+            deleteElementFromDocument('file-upload');
+            deleteElementFromDocument('display-gaps');
+            deleteElementFromDocument('display-single-gap');
+            deleteElementFromDocument('edit-single-gap');
+            deleteElementFromDocument('summary-and-download');
+
+            clearLayersFromMap(fullActivityPlotLayers, map);
+            clearLayersFromMap(dropoutPlotLayers, map);
+            clearLayersFromMap(dropoutWaypointPlotLayers, map);
+
+            // removeDownloadButton();
+        }
+
+        function plotPolylineFromFullActivity(activityData, layers, map, colour) {
+
+            // Plot the original activity in blue.
+            var positions = activityData.records
+                .map(entry => entry.position)
+                .filter(position => position[0] !== null && position[1] !== null);
+
+            // console.log(positions);
+
+            // Create a polyline and add it to the map
+            // mapLayer = L.polyline(positions, { color: colour }).addTo(map);
+
+            layer = L.polyline(positions, {
+                color: colour,
+                weight: 4, // Line thickness
+                // opacity: 0.8,
+                // dashArray: '5, 10' // Defines the pattern of dashes and gaps
+            }).addTo(map);
+
+            layers.push(layer);
+
+        }
+
         function displayFileUploadUi() {
+
+            clearAllUi();
+
+            const wrapper = document.createElement('div');
+            wrapper.id = 'file-upload';
+            wrapper.className = 'ui-wrapper';
+
+            fileInput = document.createElement('input');
+            fileInput.id = 'input-file';
+            fileInput.type = 'file';
+            fileInput.accept = '.tcx';
+            fileInput.className = 'button';
+            fileInput.style.padding = '8px 16px';
+            fileInput.style.margin = '10px 0';
+            fileInput.style.width = '50%';
+            fileInput.style.backgroundColor = 'blue';
+            fileInput.style.color = 'white';
+            fileInput.style.borderRadius = '4px';
+
+            fileInput.addEventListener('change', function (event) {
+
+                // clearAllUi();
+
+                // clearLayersFromMap(fullActivityPlotLayers, map);
+                // clearLayersFromMap(dropoutPlotLayers, map);
+
+                // Load the file into the dataInput array.
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const parser = new DOMParser();
+                    const xml = parser.parseFromString(e.target.result, 'text/xml');
+                    activityDataInput = processTcxXml(xml);
+
+                    plotPolylineFromFullActivity(activityDataInput, fullActivityPlotLayers, map, 'blue');
+
+                    // Identify dropouts.
+                    handler = new ActivityDropoutHandler(activityDataInput, 10, 50);
+
+                    dropouts = handler.getDropouts();
+                    console.log(dropouts);
+
+                    displayFindGapsUi();
+
+                };
+                reader.readAsText(file);
+            });
+
+
+            wrapper.appendChild(fileInput);
+            document.getElementById('ui-container').appendChild(wrapper);
+
+
+
+
             // Upload box
             // When file is loaded, plot the original activity in blue
             // Then search the activity for gaps
             // Then show the displayFindGapsUi
-            
+
 
         }
 
         function displayFindGapsUi() {
-            // if there are one or more gaps, 
-                // plot these in red
-                // Number the gaps
+
+            clearAllUi();
+
+            const wrapper = document.createElement('div');
+            wrapper.id = 'display-gaps';
+            // wrapper.className = 'ui-wrapper';
+
+            plotPolylineFromFullActivity(activityDataInput, fullActivityPlotLayers, map, 'blue');
+
+
+
+
+
+            if (dropouts.length > 0) {
+
+
+                const downloadTextBox = document.createElement('div');
+                downloadTextBox.id = 'download-text-box';
+                downloadTextBox.textContent = `There are ${dropouts.length} gaps in the activity`;
+                downloadTextBox.style.marginLeft = '2px';
+
+                wrapper.appendChild(downloadTextBox);
+
+
+                // dropouts.forEach(dropout => {
+                for (let i=0; i<dropouts.length; i++) {
+
+                    
+
+                    layer = L.polyline([dropouts[i].startPosition, dropouts[i].endPosition], {
+                        color: 'red',
+                        weight: 4, // Line thickness
+                        // opacity: 0.8,
+                        // dashArray: '5, 10' // Defines the pattern of dashes and gaps
+                    }).addTo(map);
+
+                    dropoutPlotLayers.push(layer);
+
+                    const distanceBetweenDropoutElememnts = calculatePolylineLength([dropouts[i].startPosition, dropouts[i].endPosition]);
+                    const result = findPointOnPolyline([dropouts[i].startPosition, dropouts[i].endPosition], distanceBetweenDropoutElememnts/2);
+
+                    const size = 30;
+                        layer = L.marker(result, {
+                            icon: L.divIcon({
+                                className: '', // No extra classes
+                                html: `
+                                    <div style="
+                                        display: flex; 
+                                        justify-content: center; 
+                                        align-items: center; 
+                                        width: ${size}px; 
+                                        height: ${size}px; 
+                                        border-radius: 50%; 
+                                        background-color: rgba(255, 0, 0, 0.7);
+                                        color: white; 
+                                        font-size: 10px; 
+                                        font-weight: bold;
+                                        text-align: center;">
+                                        gap ${i+1}
+                                    </div>
+                                `,
+                                iconSize: [size, size], // Match the size of the circle
+                                iconAnchor: [size/2, size/2], // Center the icon on the coordinate
+                            }),
+                        }).addTo(map);
+
+                        textMarkerLayers.push(layer);
+
+
+                    // startAndEndWaypoints = [dropouts[dropoutIndexToUse].startPosition, dropouts[dropoutIndexToUse].endPosition];
+
+                    // console.log(startAndEndWaypoints);
+
+
+
+                    var buttonWrapper = document.createElement('div');
+                    buttonWrapper.id = `edit-gap-button-wrapper-${i}`;
+                    buttonWrapper.style.display = 'flex';
+
+                    buttonWrapper.style.alignItems = "center";
+                    buttonWrapper.style.backgroundColor= "purple";
+            /* height: 16px; */
+                    buttonWrapper.style.width = "50%";
+
+                    buttonWrapper.style.padding = "8px 16px";
+                    buttonWrapper.style.margin = "10px 0";
+                    buttonWrapper.style.border = "none";
+                    buttonWrapper.style.borderRadius = "4px";
+                    buttonWrapper.style.color = "white";
+                    buttonWrapper.style.fontSize = "4px";
+
+
+                    var button = document.createElement('button');
+                    button.id = `edit-gap-button-${i}`;
+                    button.style.marginLeft = '2px';
+                    button.textContent = `Show gap ${i+1}`;
+                    
+
+                    button.addEventListener('click', function () {
+                    
+
+
+                    });
+
+                    buttonWrapper.appendChild(button);
+                    wrapper.appendChild(buttonWrapper);
+                }
+
+
+
+
+
+                document.getElementById('ui-container').appendChild(wrapper);
+
+                // document.getElementById('display-gaps').style.display = 'inline-block';
+
+                // show the surrounding track in blue
+                // show the gaps in red
                 // show a button to edit the first gap
-            // else
+                // show a button to accept the gaps and move on
+            } else {
                 // Print that there are no gaps and nothing to do
+                const downloadTextBox = document.createElement('div');
+                downloadTextBox.id = 'download-text-box';
+                downloadTextBox.textContent = `There are no gaps in the activity`;
+                downloadTextBox.style.marginLeft = '2px';
+
+
+                wrapper.appendChild(downloadTextBox);
+
+
+                
+
+                document.getElementById('ui-container').appendChild(wrapper);
+            }
+
+
+            // if there are one or more gaps, 
+            // plot these in red
+            // Number the gaps
+            // show a button to edit the first gap
+            // else
+            // Print that there are no gaps and nothing to do
 
 
             // If user presses the edit button, show the displayEditGapUi, for the first gap.
@@ -218,23 +525,23 @@
             // Show this one gap in red. This shows current state, and will be 
             // zoom the map view to just this gap
             // Show a button to edit the gap
-                // if button pressed, show the displayEditGapUi
+            // if button pressed, show the displayEditGapUi
             // Show a button to accept and move on
 
         }
 
         function displayEditGapUi() {
             // show a button to exit edit mode with no changes
-                // go back to the 
+            // go back to the 
             // show a button to accept the changes. 
-                // if button pressed, update the gap points and displaySingleGapUi()
+            // if button pressed, update the gap points and displaySingleGapUi()
             // if at least one waypoint has been added, show a button to clear and start again
-                // if button pressed, show the original gap again.
+            // if button pressed, show the original gap again.
 
         }
 
-        function displayNonEditModeUi() {
-            
+        function displaySummaryAndDownloadUi() {
+
         }
 
 
@@ -262,7 +569,7 @@
                 console.log(startAndEndWaypoints);
 
                 drawStuff();
-                
+
             };
             reader.readAsText(file);
 
@@ -273,28 +580,22 @@
         }
 
 
+        function clearLayersFromMap(layerList, map) {
+            if (layerList.length > 0) {
+                layerList.forEach(layer => {
+                    map.removeLayer(layer);
+                });
+                layerList = [];
+            }
+        }
 
 
 
         function drawStuff() {
 
-            var fileInput = document.getElementById('input-file');
-            if (fileInput) fileInput.remove();
 
-            fileInput = document.createElement('input');
-            fileInput.id = 'input-file';
-            fileInput.type = 'file';
-            fileInput.accept = '.tcx';
-            fileInput.className = 'button';
-            fileInput.style.width = '50%'; 
-            fileInput.style.backgroundColor = 'blue'; // Cycle through the colours if more uploads than colours.
-            fileInput.addEventListener('change', (event) => handleFileUpload(event));
 
-            
-            const container = document.getElementById('file-amend-ui-container');
-            container.appendChild(fileInput);
 
-            
 
             // Update the coordinate list display
             // coordinateListDiv.textContent = allWaypoints.map(coord => `(${coord[0]}, ${coord[1]})`).join('\n');
@@ -310,7 +611,7 @@
             //     map.removeLayer(polylineLayer);
             // }
 
-            if (polylineLayers.length>0) {
+            if (polylineLayers.length > 0) {
                 polylineLayers.forEach(layer => {
                     map.removeLayer(layer);
                 });
@@ -321,14 +622,14 @@
             //     map.removeLayer(distanceMarkerLayer);
             // }
 
-            if (distanceMarkerLayers.length>0) {
+            if (distanceMarkerLayers.length > 0) {
                 distanceMarkerLayers.forEach(layer => {
                     map.removeLayer(layer);
                 });
                 distanceMarkerLayers = [];
             }
 
-            if (textMarkerLayers.length>0) {
+            if (textMarkerLayers.length > 0) {
                 textMarkerLayers.forEach(layer => {
                     map.removeLayer(layer);
                 });
@@ -343,7 +644,7 @@
             //     }).addTo(map);
             // } 
             // If there are multiple coordinates, draw a blue polyline
-            if (startAndEndWaypoints && startAndEndWaypoints.length>1) {
+            if (startAndEndWaypoints && startAndEndWaypoints.length > 1) {
                 allWaypoints = [startAndEndWaypoints[0], ...clickedCoordinates, startAndEndWaypoints[1]];
                 layer = L.polyline(allWaypoints, {
                     color: 'blue',
@@ -353,9 +654,9 @@
 
                 polylineLayers.push(layer);
 
-                if (editWaypointsMode){
+                if (editWaypointsMode) {
 
-                    const lastLine = [allWaypoints[allWaypoints.length-2], allWaypoints[allWaypoints.length-1]];
+                    const lastLine = [allWaypoints[allWaypoints.length - 2], allWaypoints[allWaypoints.length - 1]];
 
                     // plot a guide showing where to click
                     // plot a line between second last and last waypoints.
@@ -369,29 +670,29 @@
                     polylineLayers.push(layer);
 
                     const distanceBetweenLastElements = calculatePolylineLength(lastLine);
-                    const result = findPointOnPolyline(lastLine, distanceBetweenLastElements/2);
+                    const result = findPointOnPolyline(lastLine, distanceBetweenLastElements / 2);
 
                     const size = 15;
-                        layer = L.marker(result, {
-                            icon: L.divIcon({
-                                className: '', // No extra classes
-                                // html: `
-                                //     <div style="
-                                //         display: flex; 
-                                //         justify-content: center; 
-                                //         align-items: center; 
-                                //         width: ${size}px; 
-                                //         height: ${size}px; 
-                                //         border-radius: 50%; 
-                                //         background-color: red;
-                                //         color: white; 
-                                //         font-size: 5px; 
-                                //         font-weight: bold;
-                                //         text-align: center;">
-                                //         ''
-                                //     </div>
-                                // `,
-                                html: `
+                    layer = L.marker(result, {
+                        icon: L.divIcon({
+                            className: '', // No extra classes
+                            // html: `
+                            //     <div style="
+                            //         display: flex; 
+                            //         justify-content: center; 
+                            //         align-items: center; 
+                            //         width: ${size}px; 
+                            //         height: ${size}px; 
+                            //         border-radius: 50%; 
+                            //         background-color: red;
+                            //         color: white; 
+                            //         font-size: 5px; 
+                            //         font-weight: bold;
+                            //         text-align: center;">
+                            //         ''
+                            //     </div>
+                            // `,
+                            html: `
                                     <div style="
                                         display: flex; 
                                         justify-content: center; 
@@ -407,22 +708,22 @@
                                         O
                                     </div>
                                 `,
-                                iconSize: [size, size], // Match the size of the circle
-                                iconAnchor: [size/2, size/2], // Center the icon on the coordinate
-                            }),
-                        }).addTo(map);
+                            iconSize: [size, size], // Match the size of the circle
+                            iconAnchor: [size / 2, size / 2], // Center the icon on the coordinate
+                        }),
+                    }).addTo(map);
 
-                        textMarkerLayers.push(layer);
+                    textMarkerLayers.push(layer);
 
-                    for (let i = 0; i<allWaypoints.length; i++) {
+                    for (let i = 0; i < allWaypoints.length; i++) {
 
 
                         // Plot text numbers over the waypoints
                         var text = '';
-                        if (i==0) {
+                        if (i == 0) {
                             text = 'start';
                         }
-                        else if (i==allWaypoints.length-1) {
+                        else if (i == allWaypoints.length - 1) {
                             text = 'end';
                         }
                         else {
@@ -460,7 +761,7 @@
                                     </div>
                                 `,
                                 iconSize: [size, size], // Match the size of the circle
-                                iconAnchor: [size/2, size/2], // Center the icon on the coordinate
+                                iconAnchor: [size / 2, size / 2], // Center the icon on the coordinate
                             }),
                         }).addTo(map);
 
@@ -491,7 +792,7 @@
 
                     // }
 
-                    
+
 
 
                 }
@@ -510,21 +811,21 @@
             // coordinateListDiv.textContent = 'No coordinates yet.';
 
             // Remove the current layer from the map
-            if (polylineLayers.length>0) {
+            if (polylineLayers.length > 0) {
                 polylineLayers.forEach(layer => {
                     map.removeLayer(layer);
                 });
                 polylineLayers = [];
             }
 
-            if (distanceMarkerLayers.length>0) {
+            if (distanceMarkerLayers.length > 0) {
                 distanceMarkerLayers.forEach(layer => {
                     map.removeLayer(layer);
                 });
                 distanceMarkerLayers = [];
             }
 
-            if (textMarkerLayers.length>0) {
+            if (textMarkerLayers.length > 0) {
                 textMarkerLayers.forEach(layer => {
                     map.removeLayer(layer);
                 });
@@ -536,25 +837,25 @@
             activityData = handler.getRemappedData();
 
             var positions = activityData.records
-            .map(entry => entry.position)
-            .filter(position => position[0] !== null && position[1] !== null);
+                .map(entry => entry.position)
+                .filter(position => position[0] !== null && position[1] !== null);
 
             console.log(positions);
 
-    // Create a polyline and add it to the map
-    // mapLayer = L.polyline(positions, { color: colour }).addTo(map);
+            // Create a polyline and add it to the map
+            // mapLayer = L.polyline(positions, { color: colour }).addTo(map);
 
             layer = L.polyline(positions, {
-                        color: 'red',
-                        weight: 4, // Line thickness
-                        // opacity: 0.8,
-                        // dashArray: '5, 10' // Defines the pattern of dashes and gaps
-                    }).addTo(map);
+                color: 'red',
+                weight: 4, // Line thickness
+                // opacity: 0.8,
+                // dashArray: '5, 10' // Defines the pattern of dashes and gaps
+            }).addTo(map);
 
             polylineLayers.push(layer);
 
 
-            
+
 
             // Hide the clear button if the list is empty
             acceptButton.style.display = 'none';
@@ -567,7 +868,7 @@
 
         });
 
-        
+
 
         // Add an event listener for the clear button
         clearButton.addEventListener('click', function () {
@@ -576,27 +877,27 @@
             // coordinateListDiv.textContent = 'No coordinates yet.';
 
             // Remove the current layer from the map
-            if (polylineLayers.length>0) {
+            if (polylineLayers.length > 0) {
                 polylineLayers.forEach(layer => {
                     map.removeLayer(layer);
                 });
                 polylineLayers = [];
             }
 
-            if (distanceMarkerLayers.length>0) {
+            if (distanceMarkerLayers.length > 0) {
                 distanceMarkerLayers.forEach(layer => {
                     map.removeLayer(layer);
                 });
                 distanceMarkerLayers = [];
             }
 
-            if (textMarkerLayers.length>0) {
+            if (textMarkerLayers.length > 0) {
                 textMarkerLayers.forEach(layer => {
                     map.removeLayer(layer);
                 });
                 textMarkerLayers = [];
             }
-            
+
 
             // Hide the clear button if the list is empty
             clearButton.style.display = 'none';
@@ -656,7 +957,8 @@
             // downloadBox.textContent = 'Upload a file into each input box';
             downloadBox.style.display = 'none';
         }
-        
+
     </script>
 </body>
+
 </html>
