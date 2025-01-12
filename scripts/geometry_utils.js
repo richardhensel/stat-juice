@@ -223,12 +223,12 @@ function updateActivitySection(activityData, indices, newPositions) {
         throw new Error("Invalid newPositions: Length must match the number of elements between the indices.");
     }
 
-    for (let i = startIndex + 1; i < endIndex; i++) {
-        const record = records[i];
-        if (record.position[0] !== null || record.position[1] !== null) {
-            throw new Error("Invalid section: All elements between the indices must have null position values.");
-        }
-    }
+    // for (let i = startIndex + 1; i < endIndex; i++) {
+    //     const record = records[i];
+    //     if (record.position[0] !== null || record.position[1] !== null) {
+    //         throw new Error("Invalid section: All elements between the indices must have null position values.");
+    //     }
+    // }
 
     // Overwrite the positions
     let previousPosition = records[startIndex].position;
@@ -280,6 +280,110 @@ function updateActivitySection(activityData, indices, newPositions) {
     return activityData;
 }
 
+// class ActivityDropoutHandlerBackup {
+//     constructor(activity, minDropoutDistance, maxTimeGapSeconds) {
+//         if (!activity || !Array.isArray(activity.records)) {
+//             throw new Error("Invalid activity data or records array.");
+//         }
+
+//         this.originalActivity = JSON.parse(JSON.stringify(activity)); // Deep copy of the original activity
+//         this.activity = JSON.parse(JSON.stringify(activity)); // Working copy of the activity
+//         this.minDropoutDistance = minDropoutDistance;
+//         this.maxTimeGapSeconds = maxTimeGapSeconds;
+//         this.dropoutBoundingIndices = identifyPositionDropouts(this.activity, this.maxTimeGapSeconds);
+        
+//         this.dropoutBoundingPositions = this.dropoutBoundingIndices.map(([startIndex, endIndex]) => {
+//             const startPosition = this.activity.records[startIndex]?.position;
+//             const endPosition = this.activity.records[endIndex]?.position;
+//             return { startPosition, endPosition };
+//         });
+
+//         this.hasBeenRemapped = Array(dropoutBoundingIndices.length).fill(false);
+
+        
+//     }
+
+//     getDropouts() {
+//         console.log("bounding indices")
+//         console.log(this.dropoutBoundingIndices);
+
+//         console.log("bounding positions")
+//         console.log(this.dropoutBoundingPositions);
+
+//         // return this.dropoutBoundingIndices.map(([startIndex, endIndex]) => {
+//         //     const startPosition = this.activity.records[startIndex]?.position;
+//         //     const endPosition = this.activity.records[endIndex]?.position;
+//         //     return { startPosition, endPosition };
+//         // });
+
+//         return this.dropoutBoundingPositions;
+//     }
+
+//     remapDropout(dropoutId, roughPolyline) {
+//         if (dropoutId < 0 || dropoutId >= this.dropoutBoundingIndices.length) {
+//             throw new Error("Invalid dropout ID.");
+//         }
+
+//         const [startIndex, endIndex] = this.dropoutBoundingIndices[dropoutId];
+//         const numberOfDropoutTrackPoints = endIndex - startIndex - 1;
+
+//         if (!Array.isArray(roughPolyline) || roughPolyline.length < 2) {
+//             throw new Error("Invalid polyline: Must have at least two points.");
+//         }
+
+//         // Ensure the polyline starts and ends correctly
+//         if (
+//             JSON.stringify(roughPolyline[0]) !== JSON.stringify(this.activity.records[startIndex].position) ||
+//             JSON.stringify(roughPolyline[roughPolyline.length - 1]) !== JSON.stringify(this.activity.records[endIndex].position)
+//         ) {
+//             throw new Error("Invalid polyline: Start and end positions must match dropout bounds.");
+//         }
+
+//         const totalRoughPolylineDistance = calculatePolylineLength(roughPolyline);
+//         const distancePerIncrement = totalRoughPolylineDistance / (numberOfDropoutTrackPoints + 1);
+
+//         let runningDistance = 0;
+//         const interpolatedPositions = [];
+
+//         for (let i = 0; i < numberOfDropoutTrackPoints; i++) {
+//             runningDistance += distancePerIncrement;
+
+//             const pointResult = findPointOnPolyline(roughPolyline, runningDistance);
+
+//             if (pointResult.error) {
+//                 throw new Error(`Error finding point on polyline: ${pointResult.error}`);
+//             }
+
+//             interpolatedPositions.push([pointResult.lat, pointResult.lon]);
+//         }
+
+//         updateActivitySection(this.activity, [startIndex, endIndex], interpolatedPositions);
+//         this.hasBeenRemapped[dropoutId] = true;
+//     }
+
+//     resetDropout(dropoutId) {
+//         if (dropoutId < 0 || dropoutId >= this.dropoutBoundingIndices.length) {
+//             throw new Error("Invalid dropout ID.");
+//         }
+
+//         const [startIndex, endIndex] = this.dropoutBoundingIndices[dropoutId];
+//         const originalSection = extractSubarray(this.originalActivity.records, [startIndex + 1, endIndex - 1]);
+
+//         for (let i = startIndex + 1; i < endIndex; i++) {
+//             this.activity.records[i].position = originalSection[i - (startIndex + 1)].position;
+//         }
+
+//         // Recalculate distances and velocities for the affected section
+//         updateActivitySection(this.activity, [startIndex, endIndex], originalSection.map(record => record.position));
+
+//         this.hasBeenRemapped[dropoutId] = false;
+//     }
+
+//     getRemappedData() {
+//         return this.activity;
+//     }
+// }
+
 class ActivityDropoutHandler {
     constructor(activity, minDropoutDistance, maxTimeGapSeconds) {
         if (!activity || !Array.isArray(activity.records)) {
@@ -290,39 +394,43 @@ class ActivityDropoutHandler {
         this.activity = JSON.parse(JSON.stringify(activity)); // Working copy of the activity
         this.minDropoutDistance = minDropoutDistance;
         this.maxTimeGapSeconds = maxTimeGapSeconds;
-        this.dropoutBoundingIndices = identifyPositionDropouts(this.activity, this.maxTimeGapSeconds);
-        
-        this.dropoutBoundingPositions = this.dropoutBoundingIndices.map(([startIndex, endIndex]) => {
+        this.dropouts = identifyPositionDropouts(this.activity, this.maxTimeGapSeconds);
+
+        this.hasBeenRemapped = Array(this.dropouts.length).fill(false);
+    }
+
+    getDropoutStartAndEnd() {
+        return this.dropouts.map(([startIndex, endIndex]) => {
             const startPosition = this.activity.records[startIndex]?.position;
             const endPosition = this.activity.records[endIndex]?.position;
             return { startPosition, endPosition };
         });
-
-        
     }
 
-    getDropouts() {
-        console.log("bounding indices")
-        console.log(this.dropoutBoundingIndices);
-
-        console.log("bounding positions")
-        console.log(this.dropoutBoundingPositions);
-
-        // return this.dropoutBoundingIndices.map(([startIndex, endIndex]) => {
-        //     const startPosition = this.activity.records[startIndex]?.position;
-        //     const endPosition = this.activity.records[endIndex]?.position;
-        //     return { startPosition, endPosition };
-        // });
-
-        return this.dropoutBoundingPositions;
-    }
-
-    remapDropout(dropoutId, roughPolyline) {
-        if (dropoutId < 0 || dropoutId >= this.dropoutBoundingIndices.length) {
+    getDropoutRecords(dropoutId) {
+        if (dropoutId < 0 || dropoutId >= this.dropouts.length) {
             throw new Error("Invalid dropout ID.");
         }
 
-        const [startIndex, endIndex] = this.dropoutBoundingIndices[dropoutId];
+        const [startIndex, endIndex] = this.dropouts[dropoutId];
+        const records = this.activity.records;
+
+        // Include the last non-null record before the dropout
+        const startRecord = records[startIndex];
+
+        // Include the first non-null record after the dropout
+        const endRecord = records[endIndex];
+
+        return {records: [startRecord, ...records.slice(startIndex + 1, endIndex), endRecord], hasBeenRemapped: this.hasBeenRemapped[dropoutId]};
+        // return {records: records.slice(startIndex, endIndex), hasBeenRemapped: this.hasBeenRemapped[dropoutId]};
+    }
+
+    remapDropout(dropoutId, roughPolyline) {
+        if (dropoutId < 0 || dropoutId >= this.dropouts.length) {
+            throw new Error("Invalid dropout ID.");
+        }
+
+        const [startIndex, endIndex] = this.dropouts[dropoutId];
         const numberOfDropoutTrackPoints = endIndex - startIndex - 1;
 
         if (!Array.isArray(roughPolyline) || roughPolyline.length < 2) {
@@ -356,14 +464,15 @@ class ActivityDropoutHandler {
         }
 
         updateActivitySection(this.activity, [startIndex, endIndex], interpolatedPositions);
+        this.hasBeenRemapped[dropoutId] = true;
     }
 
     resetDropout(dropoutId) {
-        if (dropoutId < 0 || dropoutId >= this.dropoutBoundingIndices.length) {
+        if (dropoutId < 0 || dropoutId >= this.dropouts.length) {
             throw new Error("Invalid dropout ID.");
         }
 
-        const [startIndex, endIndex] = this.dropoutBoundingIndices[dropoutId];
+        const [startIndex, endIndex] = this.dropouts[dropoutId];
         const originalSection = extractSubarray(this.originalActivity.records, [startIndex + 1, endIndex - 1]);
 
         for (let i = startIndex + 1; i < endIndex; i++) {
@@ -372,6 +481,8 @@ class ActivityDropoutHandler {
 
         // Recalculate distances and velocities for the affected section
         updateActivitySection(this.activity, [startIndex, endIndex], originalSection.map(record => record.position));
+
+        this.hasBeenRemapped[dropoutId] = false;
     }
 
     getRemappedData() {

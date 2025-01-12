@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stat Juice</title>
+    <title>Stat Juice - Join</title>
     <!-- Include Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
@@ -126,9 +126,6 @@
 
         var outputMapLayer = null;
 
-        // Temp testing of gap identification
-        var gapLayers = [];
-
         const outputColor = 'purple';
 
         function createUploadField() {
@@ -157,12 +154,6 @@
             clearButton.className = 'button button-danger button-small';
             clearButton.style.display = 'none';
             clearButton.addEventListener('click', () => clearUploadData(id));
-
-            // const removeButton = document.createElement('button');
-            // removeButton.id = 'remove-upload-button';
-            // removeButton.textContent = '-';
-            // removeButton.className = 'button button-small';
-            // removeButton.addEventListener('click', () => removeUploadField(dataInput.length - 1));
 
             uploadWrapper.appendChild(fileInput);
             uploadWrapper.appendChild(clearButton);
@@ -296,13 +287,6 @@
                 mapLayers[id] = plotPolylineOnMap(dataInput[id], map, mapLayers[id], color);
                 document.querySelector(`#upload-wrapper-${id} .button-danger`).style.display = 'inline-block';
 
-                // if (dataInput.every(element => element !== null)) {
-                //     const appendedData = appendActivitiesSimple(dataInput);
-                //     outputMapLayer = plotPolylineOnMap(appendedData, map, outputMapLayer, outputColor);
-
-                //     placeDownloadButton(appendedData);
-                // }
-
                 checkAndMaybeAppendData();
             };
             reader.readAsText(file);
@@ -321,11 +305,7 @@
             document.querySelector(`#upload-wrapper-${id} input`).value = '';
             document.querySelector(`#upload-wrapper-${id} .button-danger`).style.display = 'none';
 
-            // Refactor this. 
-            // if (!dataInput.every(element => element !== null)) {
-            //     clearPolylineFromMap(map, outputMapLayer);
-            //     removeDownloadButton();
-            // }
+
 
             checkAndMaybeClearOutputData();
         }
@@ -336,34 +316,6 @@
                 outputMapLayer = plotPolylineOnMap(appendedData, map, outputMapLayer, outputColor);
 
                 placeDownloadButton(appendedData);
-
-
-                // Temp testing of gap identification
-                const gapIndexPairs = identifyPositionDropouts(appendedData, 60);
-                console.log(gapIndexPairs);
-                var gaps = [];
-
-                // gapIndexPairs.forEach(indexPair => {
-                //     console.log(appendedData.records);
-                //     console.log(indexPair);
-        
-                //     gaps.push(extractSubarray(appendedData.records, indexPair));
-                // });
-
-                gaps.push(extractSubarray(appendedData.records, gapIndexPairs[6]));
-
-                // console.log(gaps);
-                gapLayers = Array(gaps.length).fill(null);
-
-                for (let i=0; i<gaps.length; i++) {
-                    // console.log(gaps[i]);
-                    var activity = {records: gaps[i]};
-                    gapLayers[i] = plotPolylineOnMap(activity, map, gapLayers[i], 'black');
-                    // setTimeout(() => clearPolylineFromMap(map, gapLayer), 5000);
-                    
-                }
-
-
             }
         }
 
@@ -371,11 +323,6 @@
             if (!dataInput.every(element => element !== null)) {
                 clearPolylineFromMap(map, outputMapLayer);
                 removeDownloadButton();
-
-                // Temp testing of gap identification
-                gapLayers.forEach(layer => {
-                    clearPolylineFromMap(map, layer);
-                });
             }
         }
 
