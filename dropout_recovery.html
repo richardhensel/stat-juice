@@ -354,13 +354,51 @@
                 for (var i=0; i<dropouts.length; i++) {
                     const id = i;
 
+                    var buttonWrapperColour = null;
+
                     const dropoutRecord = handler.getDropoutRecords(id);
 
                     if (dropoutRecord.hasBeenRemapped) {
+
+
+                        buttonWrapperColour = 'green';
+
                         plotPolylineFromFullActivity({records: dropoutRecord.records}, dropoutPlotLayers, map, 'green');
+
+                        const distanceBetweenDropoutElememnts = calculatePolylineLength([dropouts[id].startPosition, dropouts[id].endPosition]);
+                        const result = findPointOnPolyline([dropouts[id].startPosition, dropouts[id].endPosition], distanceBetweenDropoutElememnts/2);
+
+                        const size = 30;
+                        layer = L.marker(result, {
+                            icon: L.divIcon({
+                                className: '', // No extra classes
+                                html: `
+                                    <div style="
+                                        display: flex; 
+                                        justify-content: center; 
+                                        align-items: center; 
+                                        width: ${size}px; 
+                                        height: ${size}px; 
+                                        border-radius: 50%; 
+                                        background-color: rgba(0, 128, 0, 0.7);
+                                        color: white; 
+                                        font-size: 10px; 
+                                        font-weight: bold;
+                                        text-align: center;">
+                                        gap ${id+1}
+                                    </div>
+                                `,
+                                iconSize: [size, size], // Match the size of the circle
+                                iconAnchor: [size/2, size/2], // Center the icon on the coordinate
+                            }),
+                        }).addTo(map);
+
+                        dropoutWaypointPlotLayers.push(layer);
+
 
                     }
                     else {
+                        buttonWrapperColour = 'red';
                         plotPolylineFromFullActivity({records: dropoutRecord.records}, dropoutPlotLayers, map, 'red');
 
                     
@@ -419,7 +457,9 @@
                     buttonWrapper.style.display = 'flex';
 
                     buttonWrapper.style.alignItems = "center";
-                    buttonWrapper.style.backgroundColor= "purple";
+                    // buttonWrapper.style.backgroundColor= "purple";
+                    buttonWrapper.style.backgroundColor = buttonWrapperColour;
+                    buttonWrapper.style.backgroundOpacity = 0.7;
                     /* height: 16px; */
                     buttonWrapper.style.width = "50%";
 
@@ -480,20 +520,29 @@
                         buttonWrapper.appendChild(discardChangesButton);
                     }
 
+                    const distance = initialDropoutDistances[id];
+                    const velocity = distance/initialDropoutTimes[id];
+
+                    const distanceDisplay = parseFloat(distance/1000).toFixed(2);
+                    const velocityDisplay = parseFloat(velocity*3.6).toFixed(2);
+
                     const initialStatsTextBox = document.createElement('div');
                     initialStatsTextBox.id = `initial-stats-text-box-${id}`;
-                    initialStatsTextBox.textContent = `Initial distance: ${initialDropoutDistances[id]}m Initial velocity: ${(initialDropoutDistances[id]/initialDropoutTimes[id])*3.6}km/h`;
+                    initialStatsTextBox.innerHTML = `Initial distance: ${distanceDisplay}km<br>Initial velocity: ${velocityDisplay}km/h`;
                     initialStatsTextBox.style.marginLeft = '2px';
 
                     buttonWrapper.appendChild(initialStatsTextBox);
 
                     if (dropoutRecord.hasBeenRemapped){
-                        const distance = calculateTotalDistance(dropoutRecord.records);
-                        const time = calculateTotalTime(dropoutRecord.records);
+                        const distanceRemapped = calculateTotalDistance(dropoutRecord.records);
+                        const velocityRemapped = distanceRemapped/calculateTotalTime(dropoutRecord.records);
+
+                        const distanceRemappedDisplay = parseFloat(distanceRemapped/1000).toFixed(2);
+                        const velocityRemappedDisplay = parseFloat(velocityRemapped*3.6).toFixed(2);
 
                         const remappedStatsTextBox = document.createElement('div');
                         remappedStatsTextBox.id = `remapped-stats-text-box-${id}`;
-                        remappedStatsTextBox.textContent = `Remapped distance: ${distance}m Remapped velocity: ${(distance/time)*3.6}km/h`;
+                        remappedStatsTextBox.innerHTML = `Remapped distance: ${distanceRemappedDisplay}km<br>Remapped velocity: ${velocityRemappedDisplay}km/h`;
                         remappedStatsTextBox.style.marginLeft = '2px';
 
                         buttonWrapper.appendChild(remappedStatsTextBox);

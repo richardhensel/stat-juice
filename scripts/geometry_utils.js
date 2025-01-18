@@ -455,10 +455,12 @@ class ActivityDropoutHandler {
 
         for (let i = startIndex + 1; i < endIndex; i++) {
             this.activity.records[i].position = originalSection[i - (startIndex + 1)].position;
+            this.activity.records[i].distance = originalSection[i - (startIndex + 1)].distance;
+            this.activity.records[i].velocity = originalSection[i - (startIndex + 1)].velocity;
         }
 
         // Recalculate distances and velocities for the affected section
-        updateActivitySection(this.activity, [startIndex, endIndex], originalSection.map(record => record.position));
+        // updateActivitySection(this.activity, [startIndex, endIndex], originalSection.map(record => record.position));
 
         this.hasBeenRemapped[dropoutId] = false;
     }
