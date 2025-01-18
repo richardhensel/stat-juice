@@ -228,7 +228,7 @@
             downloadButton.className = 'button-download';
 
             downloadButton.addEventListener("click", () => {
-                const tcxContent = formatXml(createTcxFile(activityData));
+                const tcxContent = createTcxFile(activityData);
                 const blob = new Blob([tcxContent], { type: "application/xml" });
                 const url = URL.createObjectURL(blob);
 

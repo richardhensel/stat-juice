@@ -83,53 +83,6 @@ function findPointOnPolyline(polyline, distance) {
 // getRemappedData() return the activity data with the dropouts remapped.
 
 
-
-// There is a bug here. If the dropout is at the start or end of the activity, the first index will be null.
-
-function identifyPositionDropoutsWithBug(activityData, maxTimeGapSeconds) {
-    if (!activityData || !Array.isArray(activityData.records)) {
-        throw new Error("Invalid activity data or records array.");
-    }
-
-    const records = activityData.records;
-    const dropouts = []; // List to store dropout bounding indices
-    let dropoutStartIndex = null; // Index of the first null position
-    let dropoutEndIndex = null; // Index of the last null position
-    let lastNonNullIndex = null; // Index of the last non-null position
-
-    for (let i = 0; i < records.length; i++) {
-        const record = records[i];
-        const position = record.position;
-        const timestamp = new Date(record.timestamp).getTime();
-
-        if (position[0] !== null && position[1] !== null) {
-            // Position is non-null
-            if (dropoutStartIndex !== null) {
-                // Check if the timing gap is within the allowed threshold
-                const timeGap = (timestamp - new Date(records[dropoutEndIndex].timestamp).getTime()) / 1000;
-
-                if (timeGap <= maxTimeGapSeconds) {
-                    // Add dropout bounding indices to the result
-                    dropouts.push([lastNonNullIndex, i]); 
-                }
-                // Reset dropout tracking
-                dropoutStartIndex = null;
-                dropoutEndIndex = null;
-            }
-            lastNonNullIndex = i;
-        } else {
-            // Position is null
-            if (dropoutStartIndex === null) {
-                dropoutStartIndex = i; // Start of null values
-            }
-            dropoutEndIndex = i; // Update the end of null values
-        }
-    }
-
-    return dropouts; // List of bounding indices for each dropout
-
-}
-
 function identifyPositionDropouts(activityData, maxTimeGapSeconds) {
     if (!activityData || !Array.isArray(activityData.records)) {
         throw new Error("Invalid activity data or records array.");
@@ -238,30 +191,32 @@ function updateActivitySection(activityData, indices, newPositions) {
 
     for (let i = 0; i < newPositions.length; i++) {
         const currentIndex = startIndex + 1 + i;
-        records[currentIndex].position = newPositions[i];
+        records[currentIndex].position = [newPositions[i].position.lat, newPositions[i].position.lon];
+        records[currentIndex].distance = newPositions[i].distance;
     }
 
-    let nextPosition = records[endIndex].position;
-    if (nextPosition[0] === null || nextPosition[1] === null) {
-        throw new Error("Invalid end position: Must have valid coordinates.");
-    }
+    // let nextPosition = records[endIndex].position;
+    // if (nextPosition[0] === null || nextPosition[1] === null) {
+    //     throw new Error("Invalid end position: Must have valid coordinates.");
+    // }
 
     // Update distances
-    let cumulativeDistance = 0;
+    // let cumulativeDistance = 0;
 
-    for (let i = startIndex; i <= endIndex; i++) {
-        const currentRecord = records[i];
-        const nextRecord = i < endIndex ? records[i + 1] : null;
+    // for (let i = startIndex; i <= endIndex; i++) {
+    //     const currentRecord = records[i];
+    //     const nextRecord = i < endIndex ? records[i + 1] : null;
 
-        if (nextRecord) {
-            const distance = haversineDistance(
-                currentRecord.position,
-                nextRecord.position
-            );
-            cumulativeDistance += distance;
-            currentRecord.distance = cumulativeDistance;
-        }
-    }
+    //     if (nextRecord) {
+    //         const distance = haversineDistance(
+    //             currentRecord.position,
+    //             nextRecord.position
+    //         );
+    //         // cumulativeDistance += distance;
+    //         // currentRecord.distance = cumulativeDistance;
+    //         currentRecord.distance = distance;
+    //     }
+    // }
 
     // Update velocities
     for (let i = startIndex + 1; i <= endIndex; i++) {
@@ -273,9 +228,13 @@ function updateActivitySection(activityData, indices, newPositions) {
                 new Date(previousRecord.timestamp).getTime()) /
             1000; // seconds
 
-        const distance = currentRecord.distance - previousRecord.distance;
-        currentRecord.velocity = timeDelta > 0 ? distance / timeDelta : 0;
+        currentRecord.velocity = timeDelta > 0 ? currentRecord.distance / timeDelta : 0;
     }
+
+    // Update the values of the first non-null record after the dropout
+    records[endIndex].distance = newPositions[newPositions.length -1].distance;
+    records[endIndex].velocity = records[endIndex-1].velocity;
+
 
     return activityData;
 }
@@ -384,6 +343,20 @@ function updateActivitySection(activityData, indices, newPositions) {
 //     }
 // }
 
+// Function to calculate total distance covered
+function calculateTotalDistance(records) {
+    if (records.length <= 1) return 0;
+    return records.slice(1).reduce((acc, record) => acc + (record.distance || 0), 0);
+}
+
+// Function to calculate total time in seconds
+function calculateTotalTime(records) {
+    if (records.length < 2) return 0;
+    const startTime = new Date(records[0].timestamp).getTime();
+    const endTime = new Date(records[records.length - 1].timestamp).getTime();
+    return (endTime - startTime) / 1000;
+}
+
 class ActivityDropoutHandler {
     constructor(activity, minDropoutDistance, maxTimeGapSeconds) {
         if (!activity || !Array.isArray(activity.records)) {
@@ -431,7 +404,7 @@ class ActivityDropoutHandler {
         }
 
         const [startIndex, endIndex] = this.dropouts[dropoutId];
-        const numberOfDropoutTrackPoints = endIndex - startIndex - 1;
+        const numberOfDropoutTrackPoints = endIndex - startIndex -1; 
 
         if (!Array.isArray(roughPolyline) || roughPolyline.length < 2) {
             throw new Error("Invalid polyline: Must have at least two points.");
@@ -446,6 +419,11 @@ class ActivityDropoutHandler {
         }
 
         const totalRoughPolylineDistance = calculatePolylineLength(roughPolyline);
+
+        // refactor to use avg velocity instead of average distance. 
+        // const totalTime = calculateTotalTime(this.getDropoutRecords(dropoutId).records);
+        // const averageVelocity = totalRoughPolylineDistance / totalTime;
+
         const distancePerIncrement = totalRoughPolylineDistance / (numberOfDropoutTrackPoints + 1);
 
         let runningDistance = 0;
@@ -460,7 +438,7 @@ class ActivityDropoutHandler {
                 throw new Error(`Error finding point on polyline: ${pointResult.error}`);
             }
 
-            interpolatedPositions.push([pointResult.lat, pointResult.lon]);
+            interpolatedPositions.push({position: {lat:pointResult.lat, lon: pointResult.lon}, distance: distancePerIncrement});
         }
 
         updateActivitySection(this.activity, [startIndex, endIndex], interpolatedPositions);

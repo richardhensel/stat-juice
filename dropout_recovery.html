@@ -168,26 +168,6 @@
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
 
-        // Reference the coordinates display div and coordinates list div
-        // var coordinatesDiv = document.getElementById('coordinates');
-        // var coordinateListDiv = document.getElementById('coordinate-list');
-        // var clearButton = document.getElementById('clear-button');
-
-        // var clearButton = document.createElement('button');
-        // clearButton.id = 'clear-button';
-        // clearButton.textContent = 'Clear Waypoints';
-        // clearButton.style.display = 'none';
-        // clearButton.className = 'clear-button';
-
-        // var acceptButton = document.createElement('button');
-        // acceptButton.id = 'accept-button';
-        // acceptButton.textContent = 'Accept Waypoints';
-        // acceptButton.style.display = 'none';
-        // acceptButton.className = 'clear-button';
-
-        // var container = document.getElementById('ui-container');
-        // container.appendChild(clearButton);
-        // container.appendChild(acceptButton);
 
         var activityDataInput = null;
 
@@ -201,42 +181,19 @@
         // Variable to hold the current marker or polyline
         var polylineLayers = [];
 
-
-        // var distanceMarkerLayers = [];
-        // var textMarkerLayers = [];
         var layer;
 
+        var initialDropoutDistances = [];
+        var initialDropoutTimes = [];
 
-        // var startAndEndWaypoints = [[-27.492129, 153.013128], [-27.499933, 153.020102]];
 
-        // var startAndEndWaypoints = null;
-
-        // const numberOfIntermediateTrackPoints = 100;
-
-        // var allWaypoints = null;
-
-        // var distances = [500, 2180, 10000];
-
-        // var editWaypointsMode = true;
 
         var handler = null;
 
         var dropouts = null;
 
-        // var activityData = null;
-
-        // const dropoutIndexToUse = 1;
-
         displayFileUploadUi();
 
-        // drawStuff();
-
-        // Add an event listener for mouse movement on the map
-        // map.on('mousemove', function (e) {
-        //     var lat = e.latlng.lat.toFixed(6); // Round latitude to 6 decimal places
-        //     var lng = e.latlng.lng.toFixed(6); // Round longitude to 6 decimal places
-        //     coordinatesDiv.textContent = `Mouse Coordinates: (${lat}, ${lng})`;
-        // });
 
 
 
@@ -248,15 +205,9 @@
 
         function clearAllUi() {
 
-            // document.getElementById('file-upload').style.display = 'none';
-            // document.getElementById('display-gaps').style.display = 'none';
-            // document.getElementById('display-single-gap').style.display = 'none';
-            // document.getElementById('edit-single-gap').style.display = 'none';
-            // document.getElementById('summary-and-download').style.display = 'none';
 
             deleteElementFromDocument('file-upload');
             deleteElementFromDocument('display-gaps');
-            // deleteElementFromDocument('display-single-gap');
             deleteElementFromDocument('edit-single-gap');
             deleteElementFromDocument('summary-and-download');
 
@@ -275,11 +226,6 @@
             var positions = activityData.records
                 .map(entry => entry.position)
                 .filter(position => position[0] !== null && position[1] !== null);
-
-            // console.log(positions);
-
-            // Create a polyline and add it to the map
-            // mapLayer = L.polyline(positions, { color: colour }).addTo(map);
 
             layer = L.polyline(positions, {
                 color: colour,
@@ -336,6 +282,19 @@
 
                     dropouts = handler.getDropoutStartAndEnd();
                     // console.log(dropouts);
+
+                    if (dropouts.length > 0) {
+                        for (var i=0; i<dropouts.length; i++) {
+                            const dropoutRecord = handler.getDropoutRecords(i);
+                            initialDropoutDistances.push(calculateTotalDistance(dropoutRecord.records));
+                            initialDropoutTimes.push(calculateTotalTime(dropoutRecord.records));
+                        }
+                    }
+                    else {
+                        initialDropoutDistances = [];
+                        initialDropoutTimes = [];
+
+                    }
 
                     // clickedCoordinates = Array(dropouts.length).fill([]);
                     clickedCoordinates = Array.from({ length: dropouts.length }, () => []);
@@ -469,7 +428,7 @@
                     buttonWrapper.style.border = "none";
                     buttonWrapper.style.borderRadius = "4px";
                     buttonWrapper.style.color = "white";
-                    buttonWrapper.style.fontSize = "4px";
+                    buttonWrapper.style.fontSize = "14px";
 
 
                     var showGapButton = document.createElement('button');
@@ -502,7 +461,7 @@
 
                     if (dropoutRecord.hasBeenRemapped){
                         var discardChangesButton = document.createElement('button');
-                        discardChangesButton.id = `edit-gap-button-${id}`;
+                        discardChangesButton.id = `discard-gap-button-${id}`;
                         discardChangesButton.style.marginLeft = '2px';
                         discardChangesButton.textContent = `Discard Changes to gap ${id+1}`;
                         
@@ -519,6 +478,26 @@
 
 
                         buttonWrapper.appendChild(discardChangesButton);
+                    }
+
+                    const initialStatsTextBox = document.createElement('div');
+                    initialStatsTextBox.id = `initial-stats-text-box-${id}`;
+                    initialStatsTextBox.textContent = `Initial distance: ${initialDropoutDistances[id]}m Initial velocity: ${(initialDropoutDistances[id]/initialDropoutTimes[id])*3.6}km/h`;
+                    initialStatsTextBox.style.marginLeft = '2px';
+
+                    buttonWrapper.appendChild(initialStatsTextBox);
+
+                    if (dropoutRecord.hasBeenRemapped){
+                        const distance = calculateTotalDistance(dropoutRecord.records);
+                        const time = calculateTotalTime(dropoutRecord.records);
+
+                        const remappedStatsTextBox = document.createElement('div');
+                        remappedStatsTextBox.id = `remapped-stats-text-box-${id}`;
+                        remappedStatsTextBox.textContent = `Remapped distance: ${distance}m Remapped velocity: ${(distance/time)*3.6}km/h`;
+                        remappedStatsTextBox.style.marginLeft = '2px';
+
+                        buttonWrapper.appendChild(remappedStatsTextBox);
+
                     }
 
 
@@ -551,7 +530,7 @@
                 downloadButton.textContent = `Download`;
                 
                 downloadButton.addEventListener("click", () => {
-                    const tcxContent = formatXml(createTcxFile(currentActivityData));
+                    const tcxContent = createTcxFile(currentActivityData);
                     const blob = new Blob([tcxContent], { type: "application/xml" });
                     const url = URL.createObjectURL(blob);
 

@@ -531,40 +531,12 @@ function createTcxFileNoReaccumulation(activityData) {
     return serializer.serializeToString(xmlDoc);
 }
 
-// Function to format XML string
-function formatXml(xml) {
-    const PADDING = '  '; // Define indentation level
-    const reg = /(>)(<)(\/*)/g;
-    let formatted = '';
-    let pad = 0;
-
-    // Add XML declaration
-    const xmlDeclaration = '<?xml version="1.0" encoding="UTF-8"?>\n';
-    xml = xml.replace(reg, '$1\r\n$2$3');
-
-    xml.split('\r\n').forEach((node) => {
-        let indent = 0;
-        if (node.match(/.+<\//)) {
-            indent = 0;
-        } else if (node.match(/^<\//)) {
-            if (pad !== 0) {
-                pad -= 1;
-            }
-        } else if (node.match(/^<[^\/?].*>$/)) {
-            indent = 1;
-        }
-
-        formatted += PADDING.repeat(pad) + node + '\r\n';
-        pad += indent;
-    });
-
-    return xmlDeclaration + formatted;
-}
 
 
 
 
-function createTcxFile(activityData) {
+
+function createTcxFileBackup(activityData) {
     const xmlDoc = document.implementation.createDocument(null, "TrainingCenterDatabase", null);
 
     // Add namespace attributes
@@ -717,6 +689,389 @@ function createTcxFile(activityData) {
     const serializer = new XMLSerializer();
     return serializer.serializeToString(xmlDoc);
 }
+
+
+function createTcxFileBackup(activityData) {
+
+    // Utility to append child if value is not null
+    function appendIfNotNull(parent, child) {
+        if (child.textContent !== null && child.textContent !== "") {
+            parent.appendChild(child);
+        } else if (child.hasChildNodes()) {
+            const nonNullChildren = Array.from(child.childNodes).filter(node => node.textContent !== null && node.textContent !== "");
+            if (nonNullChildren.length > 0) {
+                parent.appendChild(child);
+            }
+        }
+    }
+
+    // Function to format XML string
+    function formatXml(xml) {
+        const PADDING = '  '; // Define indentation level
+        const reg = /(>)(<)(\/*)/g;
+        let formatted = '';
+        let pad = 0;
+
+        // Add XML declaration
+        const xmlDeclaration = '<?xml version="1.0" encoding="UTF-8"?>\n';
+        xml = xml.replace(reg, '$1\r\n$2$3');
+
+        xml.split('\r\n').forEach((node) => {
+            let indent = 0;
+            if (node.match(/.+<\//)) {
+                indent = 0;
+            } else if (node.match(/^<\//)) {
+                if (pad !== 0) {
+                    pad -= 1;
+                }
+            } else if (node.match(/^<[^\/?].*>$/)) {
+                indent = 1;
+            }
+
+            formatted += PADDING.repeat(pad) + node + '\r\n';
+            pad += indent;
+        });
+
+        return xmlDeclaration + formatted;
+    }
+
+    const xmlDoc = document.implementation.createDocument(null, "TrainingCenterDatabase", null);
+
+    // Add namespace attributes
+    const root = xmlDoc.documentElement;
+    root.setAttribute("xmlns", "http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2");
+    root.setAttribute("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance");
+    root.setAttribute("xsi:schemaLocation", "http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2 http://www.garmin.com/xmlschemas/TrainingCenterDatabasev2.xsd");
+    root.setAttribute("xmlns:ns5", "http://www.garmin.com/xmlschemas/ActivityGoals/v1");
+    root.setAttribute("xmlns:ns3", "http://www.garmin.com/xmlschemas/ActivityExtension/v2");
+    root.setAttribute("xmlns:ns2", "http://www.garmin.com/xmlschemas/UserProfile/v2");
+    root.setAttribute("xmlns:ns4", "http://www.garmin.com/xmlschemas/ProfileExtension/v1");
+
+
+
+    // Create Activities element
+    const activitiesElem = xmlDoc.createElement("Activities");
+    const activityElem = xmlDoc.createElement("Activity");
+    activityElem.setAttribute("Sport", activityData.activity.activityType);
+
+    // Add Activity ID
+    const idElem = xmlDoc.createElement("Id");
+    idElem.textContent = activityData.activity.activityId;
+    appendIfNotNull(activityElem, idElem);
+
+    // Add laps
+    for (const lap of activityData.laps) {
+        const lapElem = xmlDoc.createElement("Lap");
+        lapElem.setAttribute("StartTime", lap.startTime);
+
+        // Add lap data
+        const totalTimeElem = xmlDoc.createElement("TotalTimeSeconds");
+        totalTimeElem.textContent = lap.duration;
+        appendIfNotNull(lapElem, totalTimeElem);
+
+        const distanceElem = xmlDoc.createElement("DistanceMeters");
+        distanceElem.textContent = lap.distance;
+        appendIfNotNull(lapElem, distanceElem);
+
+        const maxSpeedElem = xmlDoc.createElement("MaximumSpeed");
+        maxSpeedElem.textContent = lap.maxSpeed;
+        appendIfNotNull(lapElem, maxSpeedElem);
+
+        const caloriesElem = xmlDoc.createElement("Calories");
+        caloriesElem.textContent = lap.calories;
+        appendIfNotNull(lapElem, caloriesElem);
+
+        const avgHrElem = xmlDoc.createElement("AverageHeartRateBpm");
+        const avgHrValueElem = xmlDoc.createElement("Value");
+        avgHrValueElem.textContent = lap.avgHeartRate;
+        appendIfNotNull(avgHrElem, avgHrValueElem);
+        appendIfNotNull(lapElem, avgHrElem);
+
+        const maxHrElem = xmlDoc.createElement("MaximumHeartRateBpm");
+        const maxHrValueElem = xmlDoc.createElement("Value");
+        maxHrValueElem.textContent = lap.maxHeartRate;
+        appendIfNotNull(maxHrElem, maxHrValueElem);
+        appendIfNotNull(lapElem, maxHrElem);
+
+        const intensityElem = xmlDoc.createElement("Intensity");
+        intensityElem.textContent = lap.intensity;
+        appendIfNotNull(lapElem, intensityElem);
+
+        const cadenceElem = xmlDoc.createElement("Cadence");
+        cadenceElem.textContent = lap.cadence;
+        appendIfNotNull(lapElem, cadenceElem);
+
+        const triggerElem = xmlDoc.createElement("TriggerMethod");
+        triggerElem.textContent = lap.triggerMethod;
+        appendIfNotNull(lapElem, triggerElem);
+
+        // Add trackpoints for this lap
+        const trackElem = xmlDoc.createElement("Track");
+        const lapRecords = activityData.records.filter(record => record.lapId === lap.lapId);
+
+        let cumulativeDistance = 0;
+        let cumulativeCalories = 0;
+
+        for (const record of lapRecords) {
+            const trackpointElem = xmlDoc.createElement("Trackpoint");
+
+            const timeElem = xmlDoc.createElement("Time");
+            timeElem.textContent = record.timestamp;
+            appendIfNotNull(trackpointElem, timeElem);
+
+            if (record.position[0] !== null && record.position[1] !== null) {
+                const positionElem = xmlDoc.createElement("Position");
+
+                const latElem = xmlDoc.createElement("LatitudeDegrees");
+                latElem.textContent = record.position[0];
+                appendIfNotNull(positionElem, latElem);
+
+                const lonElem = xmlDoc.createElement("LongitudeDegrees");
+                lonElem.textContent = record.position[1];
+                appendIfNotNull(positionElem, lonElem);
+
+                appendIfNotNull(trackpointElem, positionElem);
+            }
+
+            const altitudeElem = xmlDoc.createElement("AltitudeMeters");
+            altitudeElem.textContent = record.altitude;
+            appendIfNotNull(trackpointElem, altitudeElem);
+
+            if (record.distance !== null) {
+                cumulativeDistance += record.distance;
+            }
+
+            if (record.calorieRate !== null && record.calorieRate > 0) {
+                const timeDifference = record.timestamp ? (new Date(record.timestamp).getTime() - new Date(lap.startTime).getTime()) / 1000 : 0;
+                cumulativeCalories += record.calorieRate * timeDifference;
+            }
+
+            const distanceElem = xmlDoc.createElement("DistanceMeters");
+            distanceElem.textContent = cumulativeDistance;
+            appendIfNotNull(trackpointElem, distanceElem);
+
+            const hrElem = xmlDoc.createElement("HeartRateBpm");
+            const hrValueElem = xmlDoc.createElement("Value");
+            hrValueElem.textContent = record.hr;
+            appendIfNotNull(hrElem, hrValueElem);
+            appendIfNotNull(trackpointElem, hrElem);
+
+            const cadenceElem = xmlDoc.createElement("Cadence");
+            cadenceElem.textContent = record.cadence;
+            appendIfNotNull(trackpointElem, cadenceElem);
+
+            const extensionsElem = xmlDoc.createElement("Extensions");
+            const tpxElem = xmlDoc.createElement("ns3:TPX");
+
+            const speedElem = xmlDoc.createElement("ns3:Speed");
+            speedElem.textContent = record.speed;
+            appendIfNotNull(tpxElem, speedElem);
+
+            const wattsElem = xmlDoc.createElement("ns3:Watts");
+            wattsElem.textContent = record.power;
+            appendIfNotNull(tpxElem, wattsElem);
+
+            appendIfNotNull(extensionsElem, tpxElem);
+            appendIfNotNull(trackpointElem, extensionsElem);
+
+            appendIfNotNull(trackElem, trackpointElem);
+        }
+
+        appendIfNotNull(lapElem, trackElem);
+        appendIfNotNull(activityElem, lapElem);
+    }
+
+    appendIfNotNull(activitiesElem, activityElem);
+    root.appendChild(activitiesElem);
+
+    // Serialize XML to string
+    const serializer = new XMLSerializer();
+    return formatXml(serializer.serializeToString(xmlDoc));
+}
+
+function createTcxFile(activityData) {
+
+    // Utility to append child if value is not null
+    function appendIfNotNull(parent, child) {
+        if (child.textContent !== null && child.textContent !== "") {
+            parent.appendChild(child);
+        } else if (child.hasChildNodes()) {
+            const nonNullChildren = Array.from(child.childNodes).filter(node => node.textContent !== null && node.textContent !== "");
+            if (nonNullChildren.length > 0) {
+                parent.appendChild(child);
+            }
+        }
+    }
+
+    // Function to format XML string
+    function formatXml(xml) {
+        const PADDING = '  '; // Define indentation level
+        const reg = /(>)(<)(\/*)/g;
+        let formatted = '';
+        let pad = 0;
+
+        // Add XML declaration
+        const xmlDeclaration = '<?xml version="1.0" encoding="UTF-8"?>\n';
+        xml = xml.replace(reg, '$1\r\n$2$3');
+
+        xml.split('\r\n').forEach((node) => {
+            let indent = 0;
+            if (node.match(/.+<\//)) {
+                indent = 0;
+            } else if (node.match(/^<\//)) {
+                if (pad !== 0) {
+                    pad -= 1;
+                }
+            } else if (node.match(/^<[^\/\?].*>$/)) {
+                indent = 1;
+            }
+
+            formatted += PADDING.repeat(pad) + node + '\r\n';
+            pad += indent;
+        });
+
+        return xmlDeclaration + formatted;
+    }
+
+    const xmlDoc = document.implementation.createDocument(null, "TrainingCenterDatabase", null);
+
+    // Add namespace attributes
+    const root = xmlDoc.documentElement;
+    root.setAttribute("xmlns", "http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2");
+    root.setAttribute("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance");
+    root.setAttribute("xsi:schemaLocation", "http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2 http://www.garmin.com/xmlschemas/TrainingCenterDatabasev2.xsd");
+    root.setAttribute("xmlns:ns5", "http://www.garmin.com/xmlschemas/ActivityGoals/v1");
+    root.setAttribute("xmlns:ns3", "http://www.garmin.com/xmlschemas/ActivityExtension/v2");
+    root.setAttribute("xmlns:ns2", "http://www.garmin.com/xmlschemas/UserProfile/v2");
+    root.setAttribute("xmlns:ns4", "http://www.garmin.com/xmlschemas/ProfileExtension/v1");
+
+    // Create Activities element
+    const activitiesElem = xmlDoc.createElement("Activities");
+    const activityElem = xmlDoc.createElement("Activity");
+    activityElem.setAttribute("Sport", activityData.activity.activityType);
+
+    // Add Activity ID
+    const idElem = xmlDoc.createElement("Id");
+    idElem.textContent = activityData.activity.activityId;
+    appendIfNotNull(activityElem, idElem);
+
+    let totalCumulativeDistance = 0; // Track total cumulative distance for all trackpoints
+
+    // Add laps
+    for (const lap of activityData.laps) {
+        const lapElem = xmlDoc.createElement("Lap");
+        lapElem.setAttribute("StartTime", lap.startTime);
+
+        // Initialize lap-specific metrics
+        let lapCumulativeDistance = 0;
+        let lapCumulativeCalories = 0;
+        let lapMaxSpeed = 0;
+
+        // Add lap data
+        const totalTimeElem = xmlDoc.createElement("TotalTimeSeconds");
+        totalTimeElem.textContent = lap.duration;
+        appendIfNotNull(lapElem, totalTimeElem);
+
+        const caloriesElem = xmlDoc.createElement("Calories");
+        const distanceElem = xmlDoc.createElement("DistanceMeters");
+        const maxSpeedElem = xmlDoc.createElement("MaximumSpeed");
+
+        // Add trackpoints for this lap
+        const trackElem = xmlDoc.createElement("Track");
+        const lapRecords = activityData.records.filter(record => record.lapId === lap.lapId);
+
+        for (const record of lapRecords) {
+            const trackpointElem = xmlDoc.createElement("Trackpoint");
+
+            const timeElem = xmlDoc.createElement("Time");
+            timeElem.textContent = record.timestamp;
+            appendIfNotNull(trackpointElem, timeElem);
+
+            if (record.position[0] !== null && record.position[1] !== null) {
+                const positionElem = xmlDoc.createElement("Position");
+
+                const latElem = xmlDoc.createElement("LatitudeDegrees");
+                latElem.textContent = record.position[0];
+                appendIfNotNull(positionElem, latElem);
+
+                const lonElem = xmlDoc.createElement("LongitudeDegrees");
+                lonElem.textContent = record.position[1];
+                appendIfNotNull(positionElem, lonElem);
+
+                appendIfNotNull(trackpointElem, positionElem);
+            }
+
+            const altitudeElem = xmlDoc.createElement("AltitudeMeters");
+            altitudeElem.textContent = record.altitude;
+            appendIfNotNull(trackpointElem, altitudeElem);
+
+            if (record.distance !== null) {
+                totalCumulativeDistance += record.distance;
+                lapCumulativeDistance += record.distance;
+            }
+
+            if (record.calorieRate !== null && record.calorieRate > 0) {
+                const timeDifference = record.timestamp ? (new Date(record.timestamp).getTime() - new Date(lap.startTime).getTime()) / 1000 : 0;
+                lapCumulativeCalories += record.calorieRate * timeDifference;
+            }
+
+            if (record.speed !== null && record.speed > lapMaxSpeed) {
+                lapMaxSpeed = record.speed;
+            }
+
+            const distanceElem = xmlDoc.createElement("DistanceMeters");
+            distanceElem.textContent = totalCumulativeDistance;
+            appendIfNotNull(trackpointElem, distanceElem);
+
+            const hrElem = xmlDoc.createElement("HeartRateBpm");
+            const hrValueElem = xmlDoc.createElement("Value");
+            hrValueElem.textContent = record.hr;
+            appendIfNotNull(hrElem, hrValueElem);
+            appendIfNotNull(trackpointElem, hrElem);
+
+            const cadenceElem = xmlDoc.createElement("Cadence");
+            cadenceElem.textContent = record.cadence;
+            appendIfNotNull(trackpointElem, cadenceElem);
+
+            const extensionsElem = xmlDoc.createElement("Extensions");
+            const tpxElem = xmlDoc.createElement("ns3:TPX");
+
+            const speedElem = xmlDoc.createElement("ns3:Speed");
+            speedElem.textContent = record.speed;
+            appendIfNotNull(tpxElem, speedElem);
+
+            const wattsElem = xmlDoc.createElement("ns3:Watts");
+            wattsElem.textContent = record.power;
+            appendIfNotNull(tpxElem, wattsElem);
+
+            appendIfNotNull(extensionsElem, tpxElem);
+            appendIfNotNull(trackpointElem, extensionsElem);
+
+            appendIfNotNull(trackElem, trackpointElem);
+        }
+
+        // Set lap-specific values
+        caloriesElem.textContent = Math.round(lapCumulativeCalories);
+        appendIfNotNull(lapElem, caloriesElem);
+
+        distanceElem.textContent = lapCumulativeDistance;
+        appendIfNotNull(lapElem, distanceElem);
+
+        maxSpeedElem.textContent = lapMaxSpeed;
+        appendIfNotNull(lapElem, maxSpeedElem);
+
+        appendIfNotNull(lapElem, trackElem);
+        appendIfNotNull(activityElem, lapElem);
+    }
+
+    appendIfNotNull(activitiesElem, activityElem);
+    root.appendChild(activitiesElem);
+
+    // Serialize XML to string
+    const serializer = new XMLSerializer();
+    return formatXml(serializer.serializeToString(xmlDoc));
+}
+
 
 
 
