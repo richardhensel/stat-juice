@@ -108,12 +108,22 @@
             border-radius: 4px;
             cursor: pointer;
         }
+
+        .scrollable-div {
+            width: 100%;          /* Scale to the width of the parent */
+            height: 500px;        /* Fixed height */
+            overflow-y: auto;     /* Enable vertical scrolling */
+            overflow-x: hidden;   /* Prevent horizontal scrolling */
+            border: 1px solid #ccc; /* Add border for visibility */
+            padding: 10px;        /* Add padding for content spacing */
+            box-sizing: border-box; /* Include padding and border in width */
+        }
     </style>
 </head>
 
 <body>
     <h1 style="font-family: Arial, sans-serif;">Fill gaps in recorded position</h1>
-    <div id="map"></div>
+   
     <!-- <div 
         id="instructions"
         style="font-family: Arial, sans-serif;"> 
@@ -127,7 +137,7 @@
         <!-- Left Column -->
         <div class="column">
             <!-- <h2>Upload two or more activity files to be joined</h2> -->
-            <div id="ui-container">
+            <div id="ui-container" class="scrollable-div">
                 <!-- <div id="file-upload" class="ui-wrapper" style="display: none;"></div>
                 <div id="display-gaps" class="ui-wrapper" style="display: none;"></div>
                 <div id="display-single-gap" class="ui-wrapper" style="display: none;"></div>
@@ -141,15 +151,26 @@
             <!-- <button id="add-upload-button" class="button">+</button> -->
         </div>
 
+
+
         <!-- Right Column -->
-        <!-- <div class="column"> -->
-        <!-- <h2>Download the joined activitiy</h2> -->
-        <!-- <div id="download-container" class= "download-container"> -->
-        <!-- <div id="download-wrapper" class="download-wrapper"> -->
-        <!-- <div id="download-box" class="download-box" style="display: none;"></div> -->
-        <!-- </div> -->
-        <!-- </div> -->
-        <!-- </div> -->
+        <div class="column">
+
+            <div id="map"></div>
+            <!-- <h2>Upload two or more activity files to be joined</h2> -->
+            <!-- <div id="graph-container" class="scrollable-div"> -->
+                <!-- <div id="file-upload" class="ui-wrapper" style="display: none;"></div>
+                <div id="display-gaps" class="ui-wrapper" style="display: none;"></div>
+                <div id="display-single-gap" class="ui-wrapper" style="display: none;"></div>
+                <div id="edit-single-gap" class="ui-wrapper" style="display: none;"></div>
+                <div id="summary-and-download" class="ui-wrapper" style="display: none;"></div> -->
+
+
+
+            </div>
+
+            <!-- <button id="add-upload-button" class="button">+</button> -->
+        </div>
     </div>
 
 
@@ -160,8 +181,8 @@
     <script src="scripts/tcx_utils.js"></script>
     <script>
         // Initialize the map
-        var map = L.map('map').setView([-27.48, 153.0], 13); // Centered at Brisbane
-
+        // var map = L.map('map').setView([-27.48, 153.0], 13); // Centered at Brisbane (most populous city in the world).
+        var map = L.map('map').setView([0, 0], 2); 
         // Add a tile layer (OpenStreetMap)
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 21,
@@ -200,6 +221,41 @@
         function deleteElementFromDocument(elementId) {
             element = document.getElementById(elementId)
             if (element) element.remove();
+        }
+
+        // function zoomMapToPolylineBounds(polyline, map) {
+        //     map.fitBounds(polyline.getBounds());
+        // }
+
+        function calculateRecordBounds(records) {
+            // Initialize variables for bounds
+            let minLat = Infinity, maxLat = -Infinity;
+            let minLon = Infinity, maxLon = -Infinity;
+
+            // Loop through the records to find the bounds
+            records.forEach(record => {
+                const [lat, lon] = record.position || [];
+                if (lat != null && lon != null) { // Only update bounds if values aren't null
+                    if (lat < minLat) minLat = lat;
+                    if (lat > maxLat) maxLat = lat;
+                    if (lon < minLon) minLon = lon;
+                    if (lon > maxLon) maxLon = lon;
+                }
+            });
+
+            // Create a Leaflet LatLngBounds object from the bounds
+            const bounds = L.latLngBounds(
+                [minLat, minLon], // Southwest corner
+                [maxLat, maxLon]  // Northeast corner
+            );
+
+            return bounds;
+        }
+
+        function zoomMapToBounds(bounds, map) {
+
+            // Fit the map to the calculated bounds
+            map.fitBounds(bounds);
         }
 
 
@@ -277,6 +333,9 @@
 
                     plotPolylineFromFullActivity(activityDataInput, fullActivityPlotLayers, map, 'blue');
 
+                    const bounds = calculateRecordBounds(activityDataInput.records);
+                    zoomMapToBounds(bounds, map);
+
                     // Identify dropouts.
                     handler = new ActivityDropoutHandler(activityDataInput, 10, 50);
 
@@ -320,6 +379,8 @@
 
         }
 
+
+
         function displayFindGapsUi() {
             // console.log({location: "start of displayFindGapsUi()", clickedCoordinates: clickedCoordinates});
 
@@ -358,6 +419,8 @@
 
                     const dropoutRecord = handler.getDropoutRecords(id);
 
+                    const dropoutRecordBounds = calculateRecordBounds(dropoutRecord.records);
+
                     if (dropoutRecord.hasBeenRemapped) {
 
 
@@ -365,8 +428,12 @@
 
                         plotPolylineFromFullActivity({records: dropoutRecord.records}, dropoutPlotLayers, map, 'green');
 
-                        const distanceBetweenDropoutElememnts = calculatePolylineLength([dropouts[id].startPosition, dropouts[id].endPosition]);
-                        const result = findPointOnPolyline([dropouts[id].startPosition, dropouts[id].endPosition], distanceBetweenDropoutElememnts/2);
+                        dropoutRecordsPolyline = dropoutRecord.records
+                            .map(entry => entry.position)
+                            .filter(position => position[0] !== null && position[1] !== null);
+
+                        const distanceBetweenDropoutElememnts = calculatePolylineLength(dropoutRecordsPolyline);
+                        const result = findPointOnPolyline(dropoutRecordsPolyline, distanceBetweenDropoutElememnts/2);
 
                         const size = 30;
                         layer = L.marker(result, {
@@ -398,8 +465,8 @@
 
                     }
                     else {
-                        buttonWrapperColour = 'red';
-                        plotPolylineFromFullActivity({records: dropoutRecord.records}, dropoutPlotLayers, map, 'red');
+                        buttonWrapperColour = 'rgb(200,5,5)';
+                        plotPolylineFromFullActivity({records: dropoutRecord.records}, dropoutPlotLayers, map, buttonWrapperColour);
 
                     
 
@@ -461,7 +528,7 @@
                     buttonWrapper.style.backgroundColor = buttonWrapperColour;
                     buttonWrapper.style.backgroundOpacity = 0.7;
                     /* height: 16px; */
-                    buttonWrapper.style.width = "50%";
+                    buttonWrapper.style.width = "80%";
 
                     buttonWrapper.style.padding = "8px 16px";
                     buttonWrapper.style.margin = "10px 0";
@@ -479,6 +546,8 @@
 
                     showGapButton.addEventListener('click', function () {
                     
+                        // zoomMapToPolylineBounds({records: dropoutRecord.records}, map);
+                        zoomMapToBounds(dropoutRecordBounds, map);
 
 
                     });
@@ -492,7 +561,7 @@
                     
 
                     editGapButton.addEventListener('click', function () {
-                        displayEditGapUi(id);
+                        displayEditGapUi(id, true);
 
 
                     });
@@ -710,7 +779,7 @@
 
         // }
 
-        function displayEditGapUi(id) {
+        function displayEditGapUi(id, isFirstEvent) {
 
             // console.log({clickedCoordinates: clickedCoordinates, id: id, clickedCoordinatesAtId: clickedCoordinates[id]});
             // console.log({location: "start of single edit", clickedCoordinates: clickedCoordinates});
@@ -757,6 +826,12 @@
             // console.log(clickedCoordinates[id].length);
 
             if (clickedCoordinates[id].length>0){
+
+                // reset bounds only the first time.
+
+
+
+
                 var clearWaypointsButton = document.createElement('button');
                 clearWaypointsButton.id = `edit-gap-button-${id}`;
                 clearWaypointsButton.style.marginLeft = '2px';
@@ -769,7 +844,7 @@
 
                     handler.resetDropout(id);
 
-                    displayEditGapUi(id);
+                    displayEditGapUi(id, false);
 
 
                 });
@@ -922,6 +997,12 @@
 
             }
 
+            // zoom the map to bounds only if no waypoints have been clicked yet.
+            if (isFirstEvent) {
+                const bounds = calculateRecordBounds(allWaypoints.map(coord => ({ position: coord })));
+                zoomMapToBounds(bounds, map);
+            }
+
 
             // show a button to exit edit mode with no changes
             // go back to the 
@@ -945,7 +1026,7 @@
                 clickedCoordinates[currentId].push([parseFloat(lat), parseFloat(lng)]);
 
                 // Update the UI
-                displayEditGapUi(currentId);
+                displayEditGapUi(currentId, false);
 
             });
 
