@@ -30,6 +30,14 @@
             font-size: 16px;
         }
 
+        .row {
+            flex: 1;
+            height: 50%;
+            padding: 10px;
+            font-family: Arial, sans-serif;
+            font-size: 16px;
+        }
+
         #coordinates,
         #coordinate-list,
         #clear-button {
@@ -119,6 +127,8 @@
             box-sizing: border-box; /* Include padding and border in width */
         }
     </style>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 
 <body>
@@ -134,51 +144,65 @@
     </div> -->
 
     <div id="content">
-        <!-- Left Column -->
-        <div class="column">
-            <!-- <h2>Upload two or more activity files to be joined</h2> -->
-            <div id="ui-container" class="scrollable-div">
-                <!-- <div id="file-upload" class="ui-wrapper" style="display: none;"></div>
-                <div id="display-gaps" class="ui-wrapper" style="display: none;"></div>
-                <div id="display-single-gap" class="ui-wrapper" style="display: none;"></div>
-                <div id="edit-single-gap" class="ui-wrapper" style="display: none;"></div>
-                <div id="summary-and-download" class="ui-wrapper" style="display: none;"></div> -->
+        <!-- Top row -->
+        <!-- <div class="row"> -->
+            <!-- Left Column -->
+            <div class="column">
+                <!-- <h2>Upload two or more activity files to be joined</h2> -->
+                <div id="ui-container" class="scrollable-div">
+                    <!-- <div id="file-upload" class="ui-wrapper" style="display: none;"></div>
+                    <div id="display-gaps" class="ui-wrapper" style="display: none;"></div>
+                    <div id="display-single-gap" class="ui-wrapper" style="display: none;"></div>
+                    <div id="edit-single-gap" class="ui-wrapper" style="display: none;"></div>
+                    <div id="summary-and-download" class="ui-wrapper" style="display: none;"></div> -->
 
 
 
+                </div>
+
+                <!-- <button id="add-upload-button" class="button">+</button> -->
             </div>
 
-            <!-- <button id="add-upload-button" class="button">+</button> -->
-        </div>
 
 
+            <!-- Right Column -->
+            <div class="column">
 
-        <!-- Right Column -->
-        <div class="column">
+                <div id="map"></div>
+                <!-- <h2>Upload two or more activity files to be joined</h2> -->
+                <!-- <div id="graph-container" class="scrollable-div"> -->
+                    <!-- <div id="file-upload" class="ui-wrapper" style="display: none;"></div>
+                    <div id="display-gaps" class="ui-wrapper" style="display: none;"></div>
+                    <div id="display-single-gap" class="ui-wrapper" style="display: none;"></div>
+                    <div id="edit-single-gap" class="ui-wrapper" style="display: none;"></div>
+                    <div id="summary-and-download" class="ui-wrapper" style="display: none;"></div> -->
 
-            <div id="map"></div>
-            <!-- <h2>Upload two or more activity files to be joined</h2> -->
-            <!-- <div id="graph-container" class="scrollable-div"> -->
-                <!-- <div id="file-upload" class="ui-wrapper" style="display: none;"></div>
-                <div id="display-gaps" class="ui-wrapper" style="display: none;"></div>
-                <div id="display-single-gap" class="ui-wrapper" style="display: none;"></div>
-                <div id="edit-single-gap" class="ui-wrapper" style="display: none;"></div>
-                <div id="summary-and-download" class="ui-wrapper" style="display: none;"></div> -->
+                <canvas id="hrDistanceGraph" width="400" height="200"></canvas>
 
+                </div>
 
-
+                <!-- <button id="add-upload-button" class="button">+</button> -->
             </div>
+        <!-- </div> -->
 
-            <!-- <button id="add-upload-button" class="button">+</button> -->
-        </div>
+        <!-- Bottom row -->
+        <!-- <div class="row"> -->
+
+            <!-- <canvas id="hrDistanceGraph" width="400" height="200"></canvas> -->
+
+        <!-- </div> -->
     </div>
 
 
 
     <!-- Include Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Include Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <script src="scripts/geometry_utils.js"></script>
     <script src="scripts/tcx_utils.js"></script>
+    <script src="scripts/plotting_utils.js"></script>
     <script>
         // Initialize the map
         // var map = L.map('map').setView([-27.48, 153.0], 13); // Centered at Brisbane (most populous city in the world).
@@ -214,6 +238,10 @@
         var dropouts = null;
 
         displayFileUploadUi();
+
+        var hrDistanceChart = null;
+
+        var mapEditControlBox = null;
 
 
 
@@ -272,6 +300,12 @@
             clearLayersFromMap(dropoutWaypointPlotLayers, map);
 
             map.off('click');
+
+            clearChartFromMap(hrDistanceChart);
+
+            if (mapEditControlBox){
+                map.removeControl(mapEditControlBox);
+            }
 
             // removeDownloadButton();
         }
@@ -397,11 +431,12 @@
             plotPolylineFromFullActivity(currentActivityData, fullActivityPlotLayers, map, 'blue');
 
 
-
+            // Plot HR vs Distance graph
+            var ctx = document.getElementById(`hrDistanceGraph`).getContext('2d');
+            hrDistanceChart = plotHrDistanceChart(currentActivityData, ctx, hrDistanceChart, 'red')
 
 
             if (dropouts.length > 0) {
-
 
                 const summaryTextBox = document.createElement('div');
                 summaryTextBox.id = 'download-text-box';
@@ -440,7 +475,7 @@
                             icon: L.divIcon({
                                 className: '', // No extra classes
                                 html: `
-                                    <div style="
+                                    <div id="marker-${id}" style="
                                         display: flex; 
                                         justify-content: center; 
                                         align-items: center; 
@@ -458,7 +493,25 @@
                                 iconSize: [size, size], // Match the size of the circle
                                 iconAnchor: [size/2, size/2], // Center the icon on the coordinate
                             }),
-                        }).addTo(map);
+                        })
+                        .on('click', function () {
+                            displayEditGapUi(id, true);
+                        })
+                        .on('mouseover', function () {
+                            // Change the text to "edit" on hover
+                            const markerDiv = document.getElementById(`marker-${id}`);
+                            if (markerDiv) {
+                                markerDiv.textContent = 'edit';
+                            }
+                        })
+                        .on('mouseout', function () {
+                            // Change the text back to the original
+                            const markerDiv = document.getElementById(`marker-${id}`);
+                            if (markerDiv) {
+                                markerDiv.textContent = `gap ${id + 1}`;
+                            }
+                        })
+                        .addTo(map);
 
                         dropoutWaypointPlotLayers.push(layer);
 
@@ -487,7 +540,7 @@
                             icon: L.divIcon({
                                 className: '', // No extra classes
                                 html: `
-                                    <div style="
+                                    <div id="marker-${id}" style="
                                         display: flex; 
                                         justify-content: center; 
                                         align-items: center; 
@@ -505,12 +558,28 @@
                                 iconSize: [size, size], // Match the size of the circle
                                 iconAnchor: [size/2, size/2], // Center the icon on the coordinate
                             }),
-                        }).addTo(map);
+                        })
+                        .on('click', function () {
+                             displayEditGapUi(id, true);
+                        })
+                        .on('mouseover', function () {
+                            // Change the text to "edit" on hover
+                            const markerDiv = document.getElementById(`marker-${id}`);
+                            if (markerDiv) {
+                                markerDiv.textContent = 'edit';
+                            }
+                        })
+                        .on('mouseout', function () {
+                            // Change the text back to the original
+                            const markerDiv = document.getElementById(`marker-${id}`);
+                            if (markerDiv) {
+                                markerDiv.textContent = `gap ${id + 1}`;
+                            }
+                        })
+                        .addTo(map);
 
                         dropoutWaypointPlotLayers.push(layer);
                     }
-
-
 
 
                     // startAndEndWaypoints = [dropouts[dropoutIndexToUse].startPosition, dropouts[dropoutIndexToUse].endPosition];
@@ -786,6 +855,117 @@
 
             clearAllUi();
 
+            // Initialize the control properly
+            mapEditControlBox = L.control({
+                position: 'bottomleft' // Position at the bottom left
+            });
+
+            // Define the onAdd function separately
+            mapEditControlBox.onAdd = function (map) {
+                var container = L.DomUtil.create('div', 'custom-buttons');
+
+                // Add styling
+                container.style.background = 'white';
+                container.style.padding = '10px';
+                container.style.borderRadius = '5px';
+                container.style.boxShadow = '0 1px 5px rgba(0,0,0,0.65)';
+
+                // Add buttons
+                // var button1 = L.DomUtil.create('button', '', container);
+                // button1.innerHTML = 'Accept Waypoints';
+                // button1.style.margin = '5px';
+                // button1.onclick = function () {
+                //     handler.remapDropout(id, allWaypoints);
+                //     displayFindGapsUi();
+                // };
+
+                // Common hover effect for both buttons
+                const applyHoverEffect = (button, originalColor, hoverColor) => {
+                    button.onmouseover = function () {
+                        button.style.backgroundColor = hoverColor;
+                    };
+                    button.onmouseout = function () {
+                        button.style.backgroundColor = originalColor;
+                    };
+                };
+
+                // Accept Button
+                var acceptButton = L.DomUtil.create('button', 'accept-button', container);
+                acceptButton.innerHTML = '<i class="fas fa-check"></i>';
+                acceptButton.style.backgroundColor = '#f8f9fa'; // Very light grey background
+                acceptButton.style.color = '#28a745'; // Green tick icon
+                acceptButton.style.border = 'none';
+                acceptButton.style.padding = '15px';
+                acceptButton.style.width = '50px'; // Make the button square
+                acceptButton.style.height = '50px'; // Make the button square
+                acceptButton.style.borderRadius = '5px'; // Slight rounding for a modern look
+                acceptButton.style.cursor = 'pointer';
+                acceptButton.style.display = 'flex';
+                acceptButton.style.justifyContent = 'center';
+                acceptButton.style.alignItems = 'center';
+
+                // Apply hover effect for Accept Button
+                applyHoverEffect(acceptButton, '#f8f9fa', '#e2e3e5'); // Original light grey, darker grey on hover
+
+
+                // Stop click propagation on Accept Button
+                L.DomEvent.disableClickPropagation(acceptButton);
+
+                acceptButton.onclick = function () {
+                    handler.remapDropout(id, allWaypoints);
+                    displayFindGapsUi();
+                };
+
+
+                if (clickedCoordinates[id].length > 0){
+
+                    var discardButton = L.DomUtil.create('button', 'discard-button', container);
+                    discardButton.innerHTML = '<i class="fas fa-trash"></i>';
+                    discardButton.style.backgroundColor = '#f8f9fa'; // Very light grey background
+                    discardButton.style.color = '#dc3545'; // Red trash icon
+                    discardButton.style.border = 'none';
+                    discardButton.style.padding = '15px';
+                    discardButton.style.width = '50px'; // Make the button square
+                    discardButton.style.height = '50px'; // Make the button square
+                    discardButton.style.borderRadius = '5px'; // Slight rounding for a modern look
+                    discardButton.style.cursor = 'pointer';
+                    discardButton.style.display = 'flex';
+                    discardButton.style.justifyContent = 'center';
+                    discardButton.style.alignItems = 'center';
+
+                    // Apply hover effect for Accept Button
+                    applyHoverEffect(discardButton, '#f8f9fa', '#e2e3e5'); // Original light grey, darker grey on hover
+
+
+                    // Stop click propagation on Discard Button
+                    L.DomEvent.disableClickPropagation(discardButton);
+
+                    discardButton.onclick = function () {
+                        clickedCoordinates[id] = [];
+
+                        handler.resetDropout(id);
+
+                        displayEditGapUi(id, false);
+                    };
+
+                    // var button2 = L.DomUtil.create('button', '', container);
+                    // button2.innerHTML = 'Clear waypoints';
+                    // button2.style.margin = '5px';
+                    // button2.onclick = function () {
+                    //     clickedCoordinates[id] = [];
+
+                    //     handler.resetDropout(id);
+
+                    //     displayEditGapUi(id, false);
+                    // };
+                }
+
+                return container;
+            };
+
+            // Add the control to the map
+            mapEditControlBox.addTo(map);
+
             const wrapper = document.createElement('div');
             wrapper.id = 'edit-single-gap';
             // wrapper.className = 'ui-wrapper';
@@ -819,11 +999,6 @@
             });
 
             buttonWrapper.appendChild(acceptWaypointsButton);
-
-            // console.log(clickedCoordinates);
-            // console.log(id);
-            // console.log(clickedCoordinates[id]);
-            // console.log(clickedCoordinates[id].length);
 
             if (clickedCoordinates[id].length>0){
 
@@ -900,8 +1075,9 @@
             const distanceBetweenLastElements = calculatePolylineLength(lastLine);
             const result = findPointOnPolyline(lastLine, distanceBetweenLastElements/2);
 
-            const size = 15;
+            const size = 20;
                 layer = L.marker(result, {
+                    draggable: true,
                     icon: L.divIcon({
                         className: '', // No extra classes
                         // html: `
@@ -921,7 +1097,7 @@
                         //     </div>
                         // `,
                         html: `
-                            <div style="
+                            <div id="new-coord-${id}" style="
                                 display: flex; 
                                 justify-content: center; 
                                 align-items: center; 
@@ -933,18 +1109,146 @@
                                 font-size: 10px; 
                                 font-weight: bold;
                                 text-align: center;">
-                                O
+                                +
                             </div>
                         `,
                         iconSize: [size, size], // Match the size of the circle
                         iconAnchor: [size/2, size/2], // Center the icon on the coordinate
                     }),
-                }).addTo(map);
+                })
+                // ${clickedCoordinates[id].length+1}
+
+                // .on('dragstart', function (e) {
+                //     // Get the updated location
+                //     const newLatLng = e.target.getLatLng();
+
+                //     // Example: Display updated coordinates in an alert
+                //     // alert(`Marker ${id + 1} new location: Lat ${newLatLng.lat}, Lng ${newLatLng.lng}`);
+
+                //     const currentId = id; // Capture the current ID
+
+                //     // Ensure clickedCoordinates is properly initialized
+                //     clickedCoordinates[currentId] = clickedCoordinates[currentId] || [];
+
+                //     // Add the clicked coordinate
+                //     const lat = newLatLng.lat.toFixed(6);
+                //     const lng = newLatLng.lng.toFixed(6);
+                //     clickedCoordinates[currentId].push([parseFloat(lat), parseFloat(lng)]);
+
+                //     // Update the UI
+                //     displayEditGapUi(currentId, false);
+                // })
+                .on('mouseover', function () {
+                    // Change the text to "edit" on hover
+                    const markerDiv = document.getElementById(`new-coord-${id}`);
+                    if (markerDiv) {
+                        markerDiv.textContent = 'Drag';
+                    }
+                })
+                .on('mouseout', function () {
+                    // Change the text back to the original
+                    const markerDiv = document.getElementById(`new-coord-${id}`);
+                    if (markerDiv) {
+                        markerDiv.textContent = "+";
+                    }
+                })
+                .on('dragend', function (e) {
+                    // Get the updated location
+                    const newLatLng = e.target.getLatLng();
+
+                    const currentId = id; // Capture the current ID
+
+                    // Ensure clickedCoordinates is properly initialized
+                    clickedCoordinates[currentId] = clickedCoordinates[currentId] || [];
+
+                    // Add the clicked coordinate
+                    const lat = newLatLng.lat.toFixed(6);
+                    const lng = newLatLng.lng.toFixed(6);
+                    clickedCoordinates[currentId].push([parseFloat(lat), parseFloat(lng)]);
+
+                    // Update the UI
+                    displayEditGapUi(currentId, false);
+                })
+                .addTo(map);
 
                 dropoutWaypointPlotLayers.push(layer);
 
-            for (let i = 0; i<allWaypoints.length; i++) {
 
+            // Show the intermediate waypoints that have already been placed. These can be dragged.
+            for (let i = 0; i<clickedCoordinates[id].length; i++) {
+
+                const size = 20;
+                layer = L.marker(clickedCoordinates[id][i], {
+                    draggable: true,
+                    icon: L.divIcon({
+                        className: '', // No extra classes
+                        html: `
+                            <div id="clicked-coord-${id}-${i}" style="
+                                display: flex; 
+                                justify-content: center; 
+                                align-items: center; 
+                                width: ${size}px; 
+                                height: ${size}px; 
+                                border-radius: 50%; 
+                                background-color: blue;
+                                background-opacity: 0.7;
+                                color: white; 
+                                font-size: 9px; 
+                                font-weight: bold;
+                                text-align: center;">
+                                ${i+1}
+                            </div>
+                        `,
+                        iconSize: [size, size], // Match the size of the circle
+                        iconAnchor: [size/2, size/2], // Center the icon on the coordinate
+                    }),
+                })
+                .on('mouseover', function () {
+
+                    const currentId = id;
+
+                    // Change the text to "edit" on hover
+                    const markerDiv = document.getElementById(`clicked-coord-${currentId}-${i}`);
+                    if (markerDiv) {
+                        markerDiv.textContent = 'Drag';
+                    }
+                })
+                .on('mouseout', function () {
+
+                    const currentId = id;
+                    // Change the text back to the original
+                    const markerDiv = document.getElementById(`clicked-coord-${currentId}-${i}`);
+                    if (markerDiv) {
+                        markerDiv.textContent = `${i+1}`;
+                    }
+                })
+                .on('dragend', function (e) {
+                    // Get the updated location
+                    const newLatLng = e.target.getLatLng();
+
+                    const currentId = id; // Capture the current ID
+
+                    // Ensure clickedCoordinates is properly initialized
+                    clickedCoordinates[currentId] = clickedCoordinates[currentId] || [];
+
+                    // Add the clicked coordinate
+                    const lat = newLatLng.lat.toFixed(6);
+                    const lng = newLatLng.lng.toFixed(6);
+
+                    // Overwrite the variable 
+                    clickedCoordinates[currentId][i] = [parseFloat(lat), parseFloat(lng)];
+
+                    // Update the UI
+                    displayEditGapUi(currentId, false);
+                })
+                .addTo(map);
+
+                dropoutWaypointPlotLayers.push(layer);
+
+            }
+
+            // Show the start and end waypoints. these can't be edited.
+            for (let i = 0; i<allWaypoints.length; i++) {
 
                 // Plot text numbers over the waypoints
                 var text = '';
@@ -955,7 +1259,8 @@
                     text = 'end';
                 }
                 else {
-                    text = `${i}`;
+                    // only execute if it's the start or the end.
+                    continue;
                 }
 
                 // layer = L.marker(allWaypoints[i], {
@@ -979,7 +1284,7 @@
                                 width: ${size}px; 
                                 height: ${size}px; 
                                 border-radius: 50%; 
-                                background-color: blue;
+                                background-color: green;
                                 background-opacity: 0.7;
                                 color: white; 
                                 font-size: 9px; 
