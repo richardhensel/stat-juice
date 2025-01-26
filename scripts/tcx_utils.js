@@ -1,143 +1,165 @@
 
 
 // Function to process parsed XML and return the required data structures
-function processTcxXmlTotalDistAndCalories(xml) {
-    // Extract activity metadata
-    const activityElement = xml.getElementsByTagName('Activity')[0];
-    const activityType = activityElement ? activityElement.getAttribute('Sport') : null;
-    const activityId = activityElement ? activityElement.getElementsByTagName('Id')[0]?.textContent : null;
+// function processTcxXmlTotalDistAndCalories(xml) {
+//     // Extract activity metadata
+//     const activityElement = xml.getElementsByTagName('Activity')[0];
+//     const activityType = activityElement ? activityElement.getAttribute('Sport') : null;
+//     const activityId = activityElement ? activityElement.getElementsByTagName('Id')[0]?.textContent : null;
 
-    // Prepare containers for record and lap data
-    const records = [];
-    const laps = [];
+//     // Variables for accumulating duration.
+//     var cumulativeDuration = 0;
+//     var previousTimeS = null;
 
-    // Get the laps from the TCX file
-    const lapElements = xml.getElementsByTagName('Lap');
+//     // Variable for accumulating distance.
 
-    for (let lapIndex = 0; lapIndex < lapElements.length; lapIndex++) {
-        const lap = lapElements[lapIndex];
-        const lapId = lapIndex + 1; // Assign a unique ID to each lap
-        const lapStartTime = lap.getAttribute('StartTime');
+//     // Prepare containers for record and lap data
+//     const records = [];
+//     const laps = [];
 
-        // Get lap-level data
-        const lapCalories = parseFloat(lap.getElementsByTagName('Calories')[0]?.textContent || null);
-        const lapDuration = parseFloat(lap.getElementsByTagName('TotalTimeSeconds')[0]?.textContent || null);
-        const lapDistance = parseFloat(lap.getElementsByTagName('DistanceMeters')[0]?.textContent || null);
-        const lapMaxSpeed = parseFloat(lap.getElementsByTagName('MaximumSpeed')[0]?.textContent || null);
-        const lapAvgHeartRate = parseFloat(lap.getElementsByTagName('AverageHeartRateBpm')[0]?.getElementsByTagName('Value')[0]?.textContent || null);
-        const lapMaxHeartRate = parseFloat(lap.getElementsByTagName('MaximumHeartRateBpm')[0]?.getElementsByTagName('Value')[0]?.textContent || null);
-        const lapIntensity = lap.getElementsByTagName('Intensity')[0]?.textContent || null;
-        const lapCadence = parseFloat(lap.getElementsByTagName('Cadence')[0]?.textContent || null);
-        const lapTriggerMethod = lap.getElementsByTagName('TriggerMethod')[0]?.textContent || null;
+//     // Get the laps from the TCX file
+//     const lapElements = xml.getElementsByTagName('Lap');
 
-        // Extract lap extensions
-        const lapExtensions = lap.getElementsByTagName('Extensions')[0]?.getElementsByTagName('ns3:LX')[0];
-        const lapAvgSpeed = parseFloat(lapExtensions?.getElementsByTagName('ns3:AvgSpeed')[0]?.textContent || null);
-        const lapMaxBikeCadence = parseFloat(lapExtensions?.getElementsByTagName('ns3:MaxBikeCadence')[0]?.textContent || null);
-        const lapSteps = parseInt(lapExtensions?.getElementsByTagName('ns3:Steps')[0]?.textContent || null);
-        const lapAvgWatts = parseFloat(lapExtensions?.getElementsByTagName('ns3:AvgWatts')[0]?.textContent || null);
-        const lapMaxWatts = parseFloat(lapExtensions?.getElementsByTagName('ns3:MaxWatts')[0]?.textContent || null);
+//     for (let lapIndex = 0; lapIndex < lapElements.length; lapIndex++) {
+//         const lap = lapElements[lapIndex];
+//         const lapId = lapIndex + 1; // Assign a unique ID to each lap
+//         const lapStartTime = lap.getAttribute('StartTime');
 
-        // Store lap data
-        laps.push({
-            lapId: lapId,
-            startTime: lapStartTime,
-            calories: lapCalories,
-            duration: lapDuration,
-            distance: lapDistance,
-            maxSpeed: lapMaxSpeed,
-            avgHeartRate: lapAvgHeartRate,
-            maxHeartRate: lapMaxHeartRate,
-            intensity: lapIntensity,
-            cadence: lapCadence,
-            triggerMethod: lapTriggerMethod,
-            avgSpeed: lapAvgSpeed,
-            maxBikeCadence: lapMaxBikeCadence,
-            steps: lapSteps,
-            avgWatts: lapAvgWatts,
-            maxWatts: lapMaxWatts
-        });
+//         // Get lap-level data
+//         const lapCalories = parseFloat(lap.getElementsByTagName('Calories')[0]?.textContent || null);
+//         const lapDuration = parseFloat(lap.getElementsByTagName('TotalTimeSeconds')[0]?.textContent || null);
+//         const lapDistance = parseFloat(lap.getElementsByTagName('DistanceMeters')[0]?.textContent || null);
+//         const lapMaxSpeed = parseFloat(lap.getElementsByTagName('MaximumSpeed')[0]?.textContent || null);
+//         const lapAvgHeartRate = parseFloat(lap.getElementsByTagName('AverageHeartRateBpm')[0]?.getElementsByTagName('Value')[0]?.textContent || null);
+//         const lapMaxHeartRate = parseFloat(lap.getElementsByTagName('MaximumHeartRateBpm')[0]?.getElementsByTagName('Value')[0]?.textContent || null);
+//         const lapIntensity = lap.getElementsByTagName('Intensity')[0]?.textContent || null;
+//         const lapCadence = parseFloat(lap.getElementsByTagName('Cadence')[0]?.textContent || null);
+//         const lapTriggerMethod = lap.getElementsByTagName('TriggerMethod')[0]?.textContent || null;
 
-        const lapCalorieRate = (lapCalories && lapDuration) ? lapCalories / lapDuration : 0;
+//         // Extract lap extensions
+//         const lapExtensions = lap.getElementsByTagName('Extensions')[0]?.getElementsByTagName('ns3:LX')[0];
+//         const lapAvgSpeed = parseFloat(lapExtensions?.getElementsByTagName('ns3:AvgSpeed')[0]?.textContent || null);
+//         const lapMaxBikeCadence = parseFloat(lapExtensions?.getElementsByTagName('ns3:MaxBikeCadence')[0]?.textContent || null);
+//         const lapSteps = parseInt(lapExtensions?.getElementsByTagName('ns3:Steps')[0]?.textContent || null);
+//         const lapAvgWatts = parseFloat(lapExtensions?.getElementsByTagName('ns3:AvgWatts')[0]?.textContent || null);
+//         const lapMaxWatts = parseFloat(lapExtensions?.getElementsByTagName('ns3:MaxWatts')[0]?.textContent || null);
 
-        // Process each trackpoint within this lap
-        const trackpoints = lap.getElementsByTagName('Trackpoint');
+//         // Store lap data
+//         laps.push({
+//             lapId: lapId,
+//             startTime: lapStartTime,
+//             calories: lapCalories,
+//             duration: lapDuration,
+//             distance: lapDistance,
+//             maxSpeed: lapMaxSpeed,
+//             avgHeartRate: lapAvgHeartRate,
+//             maxHeartRate: lapMaxHeartRate,
+//             intensity: lapIntensity,
+//             cadence: lapCadence,
+//             triggerMethod: lapTriggerMethod,
+//             avgSpeed: lapAvgSpeed,
+//             maxBikeCadence: lapMaxBikeCadence,
+//             steps: lapSteps,
+//             avgWatts: lapAvgWatts,
+//             maxWatts: lapMaxWatts
+//         });
 
-        for (let i = 0; i < trackpoints.length; i++) {
-            const trackpoint = trackpoints[i];
-            const timestamp = trackpoint.getElementsByTagName('Time')[0]?.textContent || null;
+//         const lapCalorieRate = (lapCalories && lapDuration) ? lapCalories / lapDuration : 0;
 
-            // Extract position data
-            const position = trackpoint.getElementsByTagName('Position')[0];
-            const lat = position ? parseFloat(position.getElementsByTagName('LatitudeDegrees')[0]?.textContent || null) : null;
-            const lon = position ? parseFloat(position.getElementsByTagName('LongitudeDegrees')[0]?.textContent || null) : null;
+//         // Process each trackpoint within this lap
+//         const trackpoints = lap.getElementsByTagName('Trackpoint');
 
-            // Extract additional data
-            const altitude = parseFloat(trackpoint.getElementsByTagName('AltitudeMeters')[0]?.textContent || null);
-            const distance = parseFloat(trackpoint.getElementsByTagName('DistanceMeters')[0]?.textContent || null);
-            const hr = parseFloat(trackpoint.getElementsByTagName('HeartRateBpm')[0]?.getElementsByTagName('Value')[0]?.textContent || null);
-            const cadence = parseFloat(trackpoint.getElementsByTagName('Cadence')[0]?.textContent || null);
-            const power = parseFloat(trackpoint.getElementsByTagName('Extensions')[0]?.getElementsByTagName('ns3:TPX')[0]?.getElementsByTagName('ns3:Watts')[0]?.textContent || null);
-            const speed = parseFloat(trackpoint.getElementsByTagName('Extensions')[0]?.getElementsByTagName('ns3:TPX')[0]?.getElementsByTagName('ns3:Speed')[0]?.textContent || null);
-            const temperature = parseFloat(trackpoint.getElementsByTagName('Temperature')[0]?.textContent || null);
+//         for (let i = 0; i < trackpoints.length; i++) {
+//             const trackpoint = trackpoints[i];
+//             const timestamp = trackpoint.getElementsByTagName('Time')[0]?.textContent || null;
 
-            // Store the data for this trackpoint
-            records.push({
-                lapId: lapId, // Tag the record entry with the lap ID
-                timestamp: timestamp,
-                position: [lat, lon],
-                altitude: altitude,
-                distance: distance,
-                hr: hr,
-                cadence: cadence,
-                power: power,
-                speed: speed,
-                calorieRate: lapCalorieRate,
-                temperature: temperature
-            });
-        }
-    }
+//             // Extract position data
+//             const position = trackpoint.getElementsByTagName('Position')[0];
+//             const lat = position ? parseFloat(position.getElementsByTagName('LatitudeDegrees')[0]?.textContent || null) : null;
+//             const lon = position ? parseFloat(position.getElementsByTagName('LongitudeDegrees')[0]?.textContent || null) : null;
 
-    // Extract Creator information
-    const creatorElement = activityElement.getElementsByTagName('Creator')[0];
-    const creator = creatorElement ? {
-        name: creatorElement.getElementsByTagName('Name')[0]?.textContent,
-        unitId: creatorElement.getElementsByTagName('UnitId')[0]?.textContent,
-        productId: creatorElement.getElementsByTagName('ProductID')[0]?.textContent,
-        version: {
-            major: creatorElement.getElementsByTagName('VersionMajor')[0]?.textContent,
-            minor: creatorElement.getElementsByTagName('VersionMinor')[0]?.textContent,
-            buildMajor: creatorElement.getElementsByTagName('BuildMajor')[0]?.textContent,
-            buildMinor: creatorElement.getElementsByTagName('BuildMinor')[0]?.textContent
-        }
-    } : null;
+//             // Extract additional data
+//             const altitude = parseFloat(trackpoint.getElementsByTagName('AltitudeMeters')[0]?.textContent || null);
+//             const distance = parseFloat(trackpoint.getElementsByTagName('DistanceMeters')[0]?.textContent || null);
+//             const hr = parseFloat(trackpoint.getElementsByTagName('HeartRateBpm')[0]?.getElementsByTagName('Value')[0]?.textContent || null);
+//             const cadence = parseFloat(trackpoint.getElementsByTagName('Cadence')[0]?.textContent || null);
+//             const power = parseFloat(trackpoint.getElementsByTagName('Extensions')[0]?.getElementsByTagName('ns3:TPX')[0]?.getElementsByTagName('ns3:Watts')[0]?.textContent || null);
+//             const speed = parseFloat(trackpoint.getElementsByTagName('Extensions')[0]?.getElementsByTagName('ns3:TPX')[0]?.getElementsByTagName('ns3:Speed')[0]?.textContent || null);
+//             const temperature = parseFloat(trackpoint.getElementsByTagName('Temperature')[0]?.textContent || null);
 
-    // Extract Author information
-    const authorElement = xml.getElementsByTagName('Author')[0];
-    const author = authorElement ? {
-        name: authorElement.getElementsByTagName('Name')[0]?.textContent,
-        langId: authorElement.getElementsByTagName('LangID')[0]?.textContent,
-        partNumber: authorElement.getElementsByTagName('PartNumber')[0]?.textContent,
-        version: {
-            major: authorElement.getElementsByTagName('VersionMajor')[0]?.textContent,
-            minor: authorElement.getElementsByTagName('VersionMinor')[0]?.textContent,
-            buildMajor: authorElement.getElementsByTagName('BuildMajor')[0]?.textContent,
-            buildMinor: authorElement.getElementsByTagName('BuildMinor')[0]?.textContent
-        }
-    } : null;
+//             if (previousTimeS) {
 
-    // Return the data structures
-    return {
-        records: records,
-        laps: laps, // Return all lap data
-        activity: {
-            activityType: activityType,
-            activityId: activityId,
-            creator: creator,
-            author: author
-        }
-    };
-}
+//                 const currentTimeS = new Date(currentRecord.timestamp).getTime()/1000;
+//                 const timeDeltaS = currentTimeS - previousTimeS;
+
+//                 cumulativeDuration += timeDeltaS;
+
+//                 previousTimeS = currentTimeS;
+//             }
+
+//             // Store the data for this trackpoint
+//             records.push({
+//                 lapId: lapId, // Tag the record entry with the lap ID
+                
+//                 timestamp: timestamp,
+//                 position: [lat, lon],
+//                 altitude: altitude,
+//                 distance: distance,
+//                 hr: hr,
+//                 cadence: cadence,
+//                 power: power,
+//                 speed: speed,
+//                 calorieRate: lapCalorieRate,
+//                 temperature: temperature,
+
+//                 cumulativeDuration: cumulativeDuration
+//                 cumulativeDistance: cumulativeDistance
+//             });
+
+//             previousTimeS = currentTimeS;
+//         }
+//     }
+
+//     // Extract Creator information
+//     const creatorElement = activityElement.getElementsByTagName('Creator')[0];
+//     const creator = creatorElement ? {
+//         name: creatorElement.getElementsByTagName('Name')[0]?.textContent,
+//         unitId: creatorElement.getElementsByTagName('UnitId')[0]?.textContent,
+//         productId: creatorElement.getElementsByTagName('ProductID')[0]?.textContent,
+//         version: {
+//             major: creatorElement.getElementsByTagName('VersionMajor')[0]?.textContent,
+//             minor: creatorElement.getElementsByTagName('VersionMinor')[0]?.textContent,
+//             buildMajor: creatorElement.getElementsByTagName('BuildMajor')[0]?.textContent,
+//             buildMinor: creatorElement.getElementsByTagName('BuildMinor')[0]?.textContent
+//         }
+//     } : null;
+
+//     // Extract Author information
+//     const authorElement = xml.getElementsByTagName('Author')[0];
+//     const author = authorElement ? {
+//         name: authorElement.getElementsByTagName('Name')[0]?.textContent,
+//         langId: authorElement.getElementsByTagName('LangID')[0]?.textContent,
+//         partNumber: authorElement.getElementsByTagName('PartNumber')[0]?.textContent,
+//         version: {
+//             major: authorElement.getElementsByTagName('VersionMajor')[0]?.textContent,
+//             minor: authorElement.getElementsByTagName('VersionMinor')[0]?.textContent,
+//             buildMajor: authorElement.getElementsByTagName('BuildMajor')[0]?.textContent,
+//             buildMinor: authorElement.getElementsByTagName('BuildMinor')[0]?.textContent
+//         }
+//     } : null;
+
+//     // Return the data structures
+//     return {
+//         records: records,
+//         laps: laps, // Return all lap data
+//         activity: {
+//             activityType: activityType,
+//             activityId: activityId,
+//             creator: creator,
+//             author: author
+//         }
+//     };
+// }
 
 function processTcxXml(xml) {
     // Extract activity metadata
@@ -152,6 +174,11 @@ function processTcxXml(xml) {
     // Variables to keep track of the previous distance and calorie values
     let previousDistance = 0;
     let previousCalories = 0;
+
+    // Variables for accumulating duration.
+    var cumulativeDuration = 0;
+    var previousTimeS = null;
+    var currentTimeS = null;
 
     // Get the laps from the TCX file
     const lapElements = xml.getElementsByTagName('Lap');
@@ -231,6 +258,16 @@ function processTcxXml(xml) {
             previousDistance = distance !== null ? distance : previousDistance;
             previousCalories += incrementalCalories;
 
+            if (previousTimeS) {
+
+                currentTimeS = new Date(currentRecord.timestamp).getTime()/1000;
+                const timeDeltaS = currentTimeS - previousTimeS;
+
+                cumulativeDuration += timeDeltaS;
+
+                previousTimeS = currentTimeS;
+            }
+
             // Store the data for this trackpoint
             records.push({
                 lapId: lapId, // Tag the record entry with the lap ID
@@ -243,8 +280,12 @@ function processTcxXml(xml) {
                 power: power,
                 speed: speed,
                 calorieRate: lapCalorieRate,
-                temperature: temperature
+                temperature: temperature,
+
+                cumulativeDuration: cumulativeDuration
             });
+
+            previousTimeS = currentTimeS;
         }
     }
 

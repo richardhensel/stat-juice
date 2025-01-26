@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stat Juice - Join</title>
+    <!-- Include Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        #map {
+            height: 500px;
+            width: 100%;
+            border: 2px solid #000;
+        }
+        #content {
+            display: flex;
+            margin-top: 20px;
+        }
+        .column {
+            flex: 1;
+            width: 50%;
+            padding: 10px;
+            font-family: Arial, sans-serif;
+            font-size: 16px;
+        }
+        .button {
+            padding: 8px 16px;
+            margin: 10px 0;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .button:hover {
+            background-color: #0056b3;
+        }
+        .button-danger {
+            background-color: #d9534f;
+        }
+        .button-danger:hover {
+            background-color: #c9302c;
+        }
+        .button-small {
+            padding: 4px 8px;
+            margin-left: 10px;
+        }
+        .download-wrapper {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .download-box {
+            display: flex;
+            align-items: center;
+            background-color: purple;
+            /* height: 16px; */
+            width: 50%;
+
+            padding: 8px 16px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            font-size: 14px;
+        }
+
+        .button-download {
+            padding: 4px 8px;
+            /* margin: 4px 4px; */
+            background-color: #e9e7e7;
+            color: black;
+            /* border: none; */
+            border-radius: 4px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1 style="font-family: Arial, sans-serif;">Join multiple activity files</h1>
+    <div id="map"></div>
+    <div id="content">
+        <!-- Left Column -->
+        <div class="column">
+            <h2>Upload two or more activity files to be joined</h2>
+            <div id="upload-container"></div>
+            <!-- <button id="add-upload-button" class="button">+</button> -->
+        </div>
+
+        <!-- Right Column -->
+        <div class="column">
+            <h2>Download the joined activitiy</h2>
+            <div id="download-container" class= "download-container">
+                <div id="download-wrapper" class="download-wrapper">
+                    <div id="download-box" class="download-box"></div>
+                </div>
+            </div>
+            
+            <!-- <button id="add-upload-button" class="button">+</button> -->
+        </div>
+    </div>
+
+    <!-- Include Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="scripts/tcx_utils.js"></script>
+    <script src="scripts/plotting_utils.js"></script>
+    <script src="scripts/geometry_utils.js"></script>
+    <script>
+        // Initialize the map and set a default tile layer
+        const map = L.map('map').setView([-27.48, 153.0], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        const maxUploads = 7;
+        // let uploadCounter = 0;
+
+        const mapLayers = Array(maxUploads).fill(null);
+        const colors = ['blue', 'green', 'red', 'magenta', 'brown', 'cyan', 'orange'];
+
+        const uploadContainer = document.getElementById('upload-container');
+
+        // List to store the data from uploaded files.
+        var dataInput = [];
+
+        var outputMapLayer = null;
+
+        const outputColor = 'purple';
+
+        function createUploadField() {
+
+            // Increase the size of the dataInput array by 1.
+            dataInput.push(null);
+
+            const id = dataInput.length - 1;
+
+            const uploadWrapper = document.createElement('div');
+            uploadWrapper.id = `upload-wrapper-${id}`;
+            uploadWrapper.style.display = 'flex';
+            uploadWrapper.style.alignItems = 'center';
+            uploadWrapper.style.marginBottom = '10px';
+
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = '.tcx';
+            fileInput.className = 'button';
+            fileInput.style.width = '50%'; 
+            fileInput.style.backgroundColor = colors[(dataInput.length - 1) % colors.length]; // Cycle through the colours if more uploads than colours.
+            fileInput.addEventListener('change', (event) => handleFileUpload(event, id));
+
+            const clearButton = document.createElement('button');
+            clearButton.textContent = `Clear`;
+            clearButton.className = 'button button-danger button-small';
+            clearButton.style.display = 'none';
+            clearButton.addEventListener('click', () => clearUploadData(id));
+
+            uploadWrapper.appendChild(fileInput);
+            uploadWrapper.appendChild(clearButton);
+            // if ((dataInput.length) > 2) uploadWrapper.appendChild(removeButton);
+            
+
+            uploadContainer.appendChild(uploadWrapper);
+
+            placeAddAndRemoveUploadButtons();
+
+            checkAndMaybeClearOutputData();
+        }
+
+        // TODO: Pass All UI inputs through a single function so that common actions can be performed.
+        // function handleUiEvent(event, eventType) {
+        //     console.log(event, eventType);
+        // }
+
+        function placeAddAndRemoveUploadButtons()
+        {
+            // Delete the remove button so that it can be re-placed at the end. 
+            var addUploadButton = document.getElementById('remove-upload-button');
+            if (addUploadButton) addUploadButton.remove();
+
+            // Delete the add button so that it can be re-placed at the end.
+            var addUploadButton = document.getElementById('add-upload-button');
+            if (addUploadButton) addUploadButton.remove();
+
+            // The index of the last element of the input arrays.
+            const idOfLastUploadWrapper = dataInput.length - 1;
+            const lastUploadWrapper = document.getElementById(`upload-wrapper-${idOfLastUploadWrapper}`);
+            // const lastUploadWrapper = document.getElementById(`upload-wrapper-${dataInput.length - 1}`);
+
+            // console.log(`placeAddAndRemoveUploadButtons: upload-wrapper-${dataInput.length - 1}`);
+
+            // Add the remove button to the right of the last upload wrapper.
+            // Only add it if there are more than 2 uploads already. Can't have less than two uploads.
+            if ((dataInput.length) > 2) {
+                const removeButton = document.createElement('button');
+                removeButton.id = 'remove-upload-button';
+                removeButton.textContent = '-';
+                removeButton.className = 'button button-small';
+                removeButton.addEventListener('click', () => removeUploadField());
+                lastUploadWrapper.appendChild(removeButton);
+            }
+            
+            // Add the add button to the bottom of the upload container.
+            if (dataInput.length < maxUploads) { 
+                addUploadButton = document.createElement('button');
+                addUploadButton.id = 'add-upload-button';
+                addUploadButton.textContent = '+';
+                addUploadButton.className = 'button button-small';
+                addUploadButton.addEventListener('click', createUploadField);
+
+                uploadContainer.appendChild(addUploadButton);
+            }
+        }
+
+        function placeDownloadButton(activityData) {
+
+            const downloadName = 'activity_joined.tcx';
+
+            const downloadBox = document.getElementById('download-box');
+            downloadBox.textContent = '';
+
+            var downloadButton = document.getElementById('download-button');
+            if (downloadButton) downloadButton.remove();
+
+            downloadButton = document.createElement('button');
+            downloadButton.id = 'download-button';
+            downloadButton.textContent = `Download`;
+            downloadButton.className = 'button-download';
+
+            downloadButton.addEventListener("click", () => {
+                const tcxContent = createTcxFile(activityData);
+                const blob = new Blob([tcxContent], { type: "application/xml" });
+                const url = URL.createObjectURL(blob);
+
+                const link = document.createElement("a");
+                link.href = url;
+                link.download = downloadName;
+                link.click();
+
+                // Cleanup
+                URL.revokeObjectURL(url);
+            });
+
+            const downloadTextBox = document.createElement('div');
+            downloadTextBox.id = 'download-text-box';
+            downloadTextBox.textContent = downloadName;
+            downloadTextBox.style.marginLeft = '2px';
+
+            downloadBox.appendChild(downloadButton);
+            downloadBox.appendChild(downloadTextBox);
+        }
+
+        function removeDownloadButton() {
+            var downloadButton = document.getElementById('download-button');
+            if (downloadButton) downloadButton.remove();
+
+            var downloadTextBox = document.getElementById('download-text-box');
+            if (downloadTextBox) downloadTextBox.remove();
+            
+
+            const downloadBox = document.getElementById('download-box');
+            downloadBox.textContent = 'Upload a file into each input box';
+        }
+
+        function handleFileUpload(event, id) {
+
+            // Load the file into the dataInput array.
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const parser = new DOMParser();
+                const xml = parser.parseFromString(e.target.result, 'text/xml');
+                const data = processTcxXml(xml);
+
+                if(id in dataInput) {
+                    dataInput[id] = data;
+                }
+                else {
+                    throw new Error("attempting to push data into a non-existent index");
+                }
+                
+
+                // Handle the UI
+                const color = colors[id % colors.length]; // Cycle through the colours if more uploads than colours.
+                mapLayers[id] = plotPolylineOnMap(dataInput[id], map, mapLayers[id], color);
+                document.querySelector(`#upload-wrapper-${id} .button-danger`).style.display = 'inline-block';
+
+                checkAndMaybeAppendData();
+            };
+            reader.readAsText(file);
+
+            // console.log(dataInput[id]);
+
+        }
+
+        function clearUploadData(id) {
+
+            // Deleted the data from the dataInput array, if it exists.
+            if (dataInput[id]) dataInput[id] = null;
+            
+            // Handle the UI
+            clearPolylineFromMap(map, mapLayers[id]);
+            document.querySelector(`#upload-wrapper-${id} input`).value = '';
+            document.querySelector(`#upload-wrapper-${id} .button-danger`).style.display = 'none';
+
+
+
+            checkAndMaybeClearOutputData();
+        }
+
+        function checkAndMaybeAppendData() {
+            if (dataInput.every(element => element !== null)) {
+                const appendedData = appendActivitiesSimple(dataInput);
+                outputMapLayer = plotPolylineOnMap(appendedData, map, outputMapLayer, outputColor);
+
+                placeDownloadButton(appendedData);
+            }
+        }
+
+        function checkAndMaybeClearOutputData() {
+            if (!dataInput.every(element => element !== null)) {
+                clearPolylineFromMap(map, outputMapLayer);
+                removeDownloadButton();
+            }
+        }
+
+        function removeUploadField() {
+            
+            // The index of the last element of the input arrays.
+            const idToRemove = dataInput.length-1;
+
+            // Remove the last element from the dataInput array.
+            dataInput.pop();
+
+            // Handler the UI.
+            clearUploadData(idToRemove);
+            document.getElementById(`upload-wrapper-${idToRemove}`).remove();
+
+            // console.log(`remove upload-wrapper-${idToRemove}`);
+
+            placeAddAndRemoveUploadButtons();
+
+            checkAndMaybeAppendData();
+        }
+
+        // Add initial upload fields
+        createUploadField();
+        createUploadField();
+    </script>
+</body>
+</html>

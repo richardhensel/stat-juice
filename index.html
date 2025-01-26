@@ -1,55 +1,104 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stat Juice - Join</title>
+    <title>Stat Juice - Fill position Gaps</title>
     <!-- Include Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
+        /* Style the map container */
         #map {
             height: 500px;
+            /* Adjust height as needed */
             width: 100%;
             border: 2px solid #000;
+            /* Optional: A border around the map */
         }
+
         #content {
             display: flex;
             margin-top: 20px;
         }
+
         .column {
             flex: 1;
             width: 50%;
+            /* height: 100%; Ensure the body is at least the full screen height */
+            height: 89vh; /* Ensure the body is at least the full screen height */
+            overflow: hidden; /* Prevent the page itself from scrolling */
+            padding: 10px;
+            font-family: Arial, sans-serif;
+            font-size: 16px;
+
+            display: flex; /* Ensure a flexible layout if needed */
+            flex-direction: column;
+
+        }
+
+        .row {
+            flex: 1;
+            height: 50%;
             padding: 10px;
             font-family: Arial, sans-serif;
             font-size: 16px;
         }
-        .button {
+
+        #coordinates,
+        #coordinate-list,
+        #clear-button {
+            margin-top: 10px;
+            font-family: Arial, sans-serif;
+            font-size: 16px;
+        }
+
+        #coordinate-list {
+            white-space: pre-wrap;
+            border: 1px solid #ccc;
+            padding: 10px;
+            background-color: #f9f9f9;
+            height: 150px;
+            overflow-y: auto;
+            /* Scrollable if the list becomes long */
+        }
+
+        #clear-button {
             padding: 8px 16px;
-            margin: 10px 0;
-            background-color: #007bff;
+            background-color: #d9534f;
+            /* Red background */
             color: #fff;
             border: none;
             border-radius: 4px;
             cursor: pointer;
         }
-        .button:hover {
-            background-color: #0056b3;
-        }
-        .button-danger {
-            background-color: #d9534f;
-        }
-        .button-danger:hover {
+
+        #clear-button:hover {
             background-color: #c9302c;
         }
-        .button-small {
-            padding: 4px 8px;
-            margin-left: 10px;
+
+        .custom-text-icon {
+            font-size: 20px;
+            color: red;
+            background-color: transparent;
+            /* padding: 5px; */
+            border: none;
+            /* border-radius: 3px;
+            white-space: nowrap; */
         }
+
+        .ui-wrapper {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
         .download-wrapper {
             display: flex;
             align-items: center;
             margin-bottom: 10px;
         }
+
         .download-box {
             display: flex;
             align-items: center;
@@ -74,161 +123,1356 @@
             border-radius: 4px;
             cursor: pointer;
         }
-    </style>
-</head>
-<body>
-    <h1 style="font-family: Arial, sans-serif;">Join multiple activity files</h1>
-    <div id="map"></div>
-    <div id="content">
-        <!-- Left Column -->
-        <div class="column">
-            <h2>Upload two or more activity files to be joined</h2>
-            <div id="upload-container"></div>
-            <!-- <button id="add-upload-button" class="button">+</button> -->
-        </div>
 
-        <!-- Right Column -->
-        <div class="column">
-            <h2>Download the joined activitiy</h2>
-            <div id="download-container" class= "download-container">
-                <div id="download-wrapper" class="download-wrapper">
-                    <div id="download-box" class="download-box"></div>
+        .scrollable-div {
+            width: 100%;          /* Scale to the width of the parent */
+            height: 500px;        /* Fixed height */
+            overflow-y: auto;     /* Enable vertical scrolling */
+            overflow-x: hidden;   /* Prevent horizontal scrolling */
+            border: 1px solid #ccc; /* Add border for visibility */
+            padding: 10px;        /* Add padding for content spacing */
+            box-sizing: border-box; /* Include padding and border in width */
+        }
+    </style>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+
+<body>
+    <h1 style="font-family: Arial, sans-serif;">Fill gaps in recorded position</h1>
+   
+    <!-- <div 
+        id="instructions"
+        style="font-family: Arial, sans-serif;"> 
+        Click the map to fill waypoints from the Start to the End point.<br>
+        Lines are fixed once blue. New waypoints affect the red line only. <br>
+        Click 'Clear Waypoints' to start again at any time. <br>
+        Click 'Use Waypoints' to accept the path you have defined.
+    </div> -->
+
+    <div id="content">
+        <!-- Top row -->
+        <!-- <div class="row"> -->
+            <!-- Left Column -->
+            <div id="right-column" class="column">
+                <!-- <h2>Upload two or more activity files to be joined</h2> -->
+                <div id="ui-container" class="scrollable-div">
+                    <!-- <div id="file-upload" class="ui-wrapper" style="display: none;"></div>
+                    <div id="display-gaps" class="ui-wrapper" style="display: none;"></div>
+                    <div id="display-single-gap" class="ui-wrapper" style="display: none;"></div>
+                    <div id="edit-single-gap" class="ui-wrapper" style="display: none;"></div>
+                    <div id="summary-and-download" class="ui-wrapper" style="display: none;"></div> -->
+
+
+
                 </div>
+
+                <!-- <button id="add-upload-button" class="button">+</button> -->
             </div>
-            
-            <!-- <button id="add-upload-button" class="button">+</button> -->
-        </div>
+
+
+
+            <!-- Right Column -->
+            <div id="left-column" class="column">
+
+                <div id="map"></div>
+                <!-- <h2>Upload two or more activity files to be joined</h2> -->
+                <!-- <div id="graph-container" class="scrollable-div"> -->
+                    <!-- <div id="file-upload" class="ui-wrapper" style="display: none;"></div>
+                    <div id="display-gaps" class="ui-wrapper" style="display: none;"></div>
+                    <div id="display-single-gap" class="ui-wrapper" style="display: none;"></div>
+                    <div id="edit-single-gap" class="ui-wrapper" style="display: none;"></div>
+                    <div id="summary-and-download" class="ui-wrapper" style="display: none;"></div> -->
+
+                <div id="graph-container" class="scrollable-div">
+
+                <!-- <canvas id="hrDistanceGraph" width="400" height="200"></canvas> -->
+
+                </div>
+
+                <!-- <button id="add-upload-button" class="button">+</button> -->
+            </div>
+        <!-- </div> -->
+
+        <!-- Bottom row -->
+        <!-- <div class="row"> -->
+
+            <!-- <canvas id="hrDistanceGraph" width="400" height="200"></canvas> -->
+
+        <!-- </div> -->
     </div>
+
+
 
     <!-- Include Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Include Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script src="scripts/geometry_utils.js"></script>
     <script src="scripts/tcx_utils.js"></script>
     <script src="scripts/plotting_utils.js"></script>
-    <script src="scripts/geometry_utils.js"></script>
     <script>
-        // Initialize the map and set a default tile layer
-        const map = L.map('map').setView([-27.48, 153.0], 13);
+        // Initialize the map
+        // var map = L.map('map').setView([-27.48, 153.0], 13); // Centered at Brisbane (most populous city in the world).
+        var map = L.map('map').setView([0, 0], 2); 
+        // Add a tile layer (OpenStreetMap)
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
+            maxZoom: 21,
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
 
-        const maxUploads = 7;
-        // let uploadCounter = 0;
 
-        const mapLayers = Array(maxUploads).fill(null);
-        const colors = ['blue', 'green', 'red', 'magenta', 'brown', 'cyan', 'orange'];
+        var activityDataInput = null;
 
-        const uploadContainer = document.getElementById('upload-container');
+        // Array to store clicked coordinates
+        var clickedCoordinates = [[]];
 
-        // List to store the data from uploaded files.
-        var dataInput = [];
+        var fullActivityPlotLayers = [];
+        var dropoutPlotLayers = [];
+        var dropoutWaypointPlotLayers = [];
 
-        var outputMapLayer = null;
+        // Variable to hold the current marker or polyline
+        var polylineLayers = [];
 
-        const outputColor = 'purple';
+        var layer;
 
-        function createUploadField() {
+        var initialDropoutDistances = [];
+        var initialDropoutTimes = [];
 
-            // Increase the size of the dataInput array by 1.
-            dataInput.push(null);
 
-            const id = dataInput.length - 1;
 
-            const uploadWrapper = document.createElement('div');
-            uploadWrapper.id = `upload-wrapper-${id}`;
-            uploadWrapper.style.display = 'flex';
-            uploadWrapper.style.alignItems = 'center';
-            uploadWrapper.style.marginBottom = '10px';
+        var handler = null;
 
-            const fileInput = document.createElement('input');
+        var dropouts = null;
+
+        displayFileUploadUi();
+
+        var hrDistanceChart = null;
+        var distanceTimeChart = null;
+
+        var mapEditControlBox = null;
+
+
+
+
+        function deleteElementFromDocument(elementId) {
+            element = document.getElementById(elementId)
+            if (element) element.remove();
+        }
+
+        // function zoomMapToPolylineBounds(polyline, map) {
+        //     map.fitBounds(polyline.getBounds());
+        // }
+
+        function calculateRecordBounds(records) {
+            // Initialize variables for bounds
+            let minLat = Infinity, maxLat = -Infinity;
+            let minLon = Infinity, maxLon = -Infinity;
+
+            // Loop through the records to find the bounds
+            records.forEach(record => {
+                const [lat, lon] = record.position || [];
+                if (lat != null && lon != null) { // Only update bounds if values aren't null
+                    if (lat < minLat) minLat = lat;
+                    if (lat > maxLat) maxLat = lat;
+                    if (lon < minLon) minLon = lon;
+                    if (lon > maxLon) maxLon = lon;
+                }
+            });
+
+            // Create a Leaflet LatLngBounds object from the bounds
+            const bounds = L.latLngBounds(
+                [minLat, minLon], // Southwest corner
+                [maxLat, maxLon]  // Northeast corner
+            );
+
+            return bounds;
+        }
+
+        function zoomMapToBounds(bounds, map) {
+
+            // Fit the map to the calculated bounds
+            map.fitBounds(bounds);
+        }
+
+
+        function clearAllUi() {
+
+
+            deleteElementFromDocument('file-upload');
+            deleteElementFromDocument('display-gaps');
+            deleteElementFromDocument('edit-single-gap');
+            deleteElementFromDocument('summary-and-download');
+
+            clearLayersFromMap(fullActivityPlotLayers, map);
+            clearLayersFromMap(dropoutPlotLayers, map);
+            clearLayersFromMap(dropoutWaypointPlotLayers, map);
+
+            map.off('click');
+
+            // clearChartFromMap(hrDistanceChart);
+            deleteElementFromDocument('hr-distance-graph');
+            deleteElementFromDocument('distance-time-graph');
+
+            if (mapEditControlBox){
+                map.removeControl(mapEditControlBox);
+            }
+
+            // removeDownloadButton();
+        }
+
+        function plotPolylineFromFullActivity(activityData, layers, map, colour) {
+
+            // Plot the original activity in blue.
+            var positions = activityData.records
+                .map(entry => entry.position)
+                .filter(position => position[0] !== null && position[1] !== null);
+
+            layer = L.polyline(positions, {
+                color: colour,
+                weight: 4, // Line thickness
+                // opacity: 0.8,
+                // dashArray: '5, 10' // Defines the pattern of dashes and gaps
+            }).addTo(map);
+
+            layers.push(layer);
+
+        }
+
+        function displayFileUploadUi() {
+
+            clearAllUi();
+
+            const wrapper = document.createElement('div');
+            wrapper.id = 'file-upload';
+            wrapper.className = 'ui-wrapper';
+
+            fileInput = document.createElement('input');
+            fileInput.id = 'input-file';
             fileInput.type = 'file';
             fileInput.accept = '.tcx';
             fileInput.className = 'button';
-            fileInput.style.width = '50%'; 
-            fileInput.style.backgroundColor = colors[(dataInput.length - 1) % colors.length]; // Cycle through the colours if more uploads than colours.
-            fileInput.addEventListener('change', (event) => handleFileUpload(event, id));
+            fileInput.style.padding = '8px 16px';
+            fileInput.style.margin = '10px 0';
+            fileInput.style.width = '50%';
+            fileInput.style.backgroundColor = 'blue';
+            fileInput.style.color = 'white';
+            fileInput.style.borderRadius = '4px';
 
-            const clearButton = document.createElement('button');
-            clearButton.textContent = `Clear`;
-            clearButton.className = 'button button-danger button-small';
-            clearButton.style.display = 'none';
-            clearButton.addEventListener('click', () => clearUploadData(id));
+            fileInput.addEventListener('change', function (event) {
 
-            uploadWrapper.appendChild(fileInput);
-            uploadWrapper.appendChild(clearButton);
-            // if ((dataInput.length) > 2) uploadWrapper.appendChild(removeButton);
-            
+                // clearAllUi();
 
-            uploadContainer.appendChild(uploadWrapper);
+                // clearLayersFromMap(fullActivityPlotLayers, map);
+                // clearLayersFromMap(dropoutPlotLayers, map);
 
-            placeAddAndRemoveUploadButtons();
+                // Load the file into the dataInput array.
+                const file = event.target.files[0];
+                if (!file) return;
 
-            checkAndMaybeClearOutputData();
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const parser = new DOMParser();
+                    const xml = parser.parseFromString(e.target.result, 'text/xml');
+                    activityDataInput = processTcxXml(xml);
+
+                    plotPolylineFromFullActivity(activityDataInput, fullActivityPlotLayers, map, 'blue');
+
+                    const bounds = calculateRecordBounds(activityDataInput.records);
+                    zoomMapToBounds(bounds, map);
+
+                    // Identify dropouts.
+                    handler = new ActivityDropoutHandler(activityDataInput, 10, 50);
+
+                    dropouts = handler.getDropoutStartAndEnd();
+                    // console.log(dropouts);
+
+                    if (dropouts.length > 0) {
+                        for (var i=0; i<dropouts.length; i++) {
+                            const dropoutRecord = handler.getDropoutRecords(i);
+                            initialDropoutDistances.push(calculateTotalDistance(dropoutRecord.records));
+                            initialDropoutTimes.push(calculateTotalTime(dropoutRecord.records));
+                        }
+                    }
+                    else {
+                        initialDropoutDistances = [];
+                        initialDropoutTimes = [];
+
+                    }
+
+                    // clickedCoordinates = Array(dropouts.length).fill([]);
+                    clickedCoordinates = Array.from({ length: dropouts.length }, () => []);
+
+                    displayFindGapsUi();
+
+                };
+                reader.readAsText(file);
+            });
+
+
+            wrapper.appendChild(fileInput);
+            var buttonUiContainer = document.getElementById('ui-container');
+            buttonUiContainer.style.height = "100%";
+            buttonUiContainer.appendChild(wrapper);
+
+
+
+
+            // Upload box
+            // When file is loaded, plot the original activity in blue
+            // Then search the activity for gaps
+            // Then show the displayFindGapsUi
+
+
         }
 
-        // TODO: Pass All UI inputs through a single function so that common actions can be performed.
-        // function handleUiEvent(event, eventType) {
-        //     console.log(event, eventType);
+
+
+        function displayFindGapsUi() {
+            // console.log({location: "start of displayFindGapsUi()", clickedCoordinates: clickedCoordinates});
+
+            clearAllUi();
+
+            const wrapper = document.createElement('div');
+            wrapper.id = 'display-gaps';
+            // wrapper.className = 'ui-wrapper';
+
+            const currentActivityData = handler.getRemappedData();
+
+            // plotPolylineFromFullActivity(currentActivityData, fullActivityPlotLayers, map, 'blue');
+
+            plotPolylineFromFullActivity(currentActivityData, fullActivityPlotLayers, map, 'blue');
+
+
+            // Plot HR vs Distance graph
+            // Create the canvas element
+            const hrDistanceChartCanvas = document.createElement('canvas');
+            hrDistanceChartCanvas.id = 'hr-distance-graph';
+            hrDistanceChartCanvas.width = 400;
+            hrDistanceChartCanvas.height = 100;
+            hrDistanceChartCanvas.style.width = "100%";
+            hrDistanceChartCanvas.style.height = 20;
+            document.getElementById('graph-container').appendChild(hrDistanceChartCanvas);
+            hrDistanceChart = plotHrDistanceChart(currentActivityData, hrDistanceChartCanvas, hrDistanceChart, 'red');
+
+            const distanceTimeChartCanvas = document.createElement('canvas');
+            distanceTimeChartCanvas.id = 'distance-time-graph';
+            distanceTimeChartCanvas.width = 400;
+            distanceTimeChartCanvas.height = 100;
+            distanceTimeChartCanvas.style.width = "100%";
+            distanceTimeChartCanvas.style.height = 20;
+            document.getElementById('graph-container').appendChild(distanceTimeChartCanvas);
+
+            distanceTimeChart = plotdistanceTimeChart(currentActivityData, distanceTimeChartCanvas, distanceTimeChart, 'blue');
+
+
+
+            if (dropouts.length > 0) {
+
+                const summaryTextBox = document.createElement('div');
+                summaryTextBox.id = 'download-text-box';
+                summaryTextBox.textContent = `There are ${dropouts.length} gaps in the activity`;
+                summaryTextBox.style.marginLeft = '2px';
+
+                wrapper.appendChild(summaryTextBox);
+
+
+                // dropouts.forEach(dropout => {
+                for (var i=0; i<dropouts.length; i++) {
+                    const id = i;
+
+                    var buttonWrapperColour = null;
+
+                    const dropoutRecord = handler.getDropoutRecords(id);
+
+                    const dropoutRecordBounds = calculateRecordBounds(dropoutRecord.records);
+
+                    if (dropoutRecord.hasBeenRemapped) {
+
+
+                        buttonWrapperColour = 'green';
+
+                        plotPolylineFromFullActivity({records: dropoutRecord.records}, dropoutPlotLayers, map, 'green');
+
+                        dropoutRecordsPolyline = dropoutRecord.records
+                            .map(entry => entry.position)
+                            .filter(position => position[0] !== null && position[1] !== null);
+
+                        const distanceBetweenDropoutElememnts = calculatePolylineLength(dropoutRecordsPolyline);
+                        const result = findPointOnPolyline(dropoutRecordsPolyline, distanceBetweenDropoutElememnts/2);
+
+                        const size = 30;
+                        layer = L.marker(result, {
+                            icon: L.divIcon({
+                                className: '', // No extra classes
+                                html: `
+                                    <div id="marker-${id}" style="
+                                        display: flex; 
+                                        justify-content: center; 
+                                        align-items: center; 
+                                        width: ${size}px; 
+                                        height: ${size}px; 
+                                        border-radius: 50%; 
+                                        background-color: rgba(0, 128, 0, 0.7);
+                                        color: white; 
+                                        font-size: 10px; 
+                                        font-weight: bold;
+                                        text-align: center;">
+                                        gap ${id+1}
+                                    </div>
+                                `,
+                                iconSize: [size, size], // Match the size of the circle
+                                iconAnchor: [size/2, size/2], // Center the icon on the coordinate
+                            }),
+                        })
+                        .on('click', function () {
+                            displayEditGapUi(id, true);
+                        })
+                        .on('mouseover', function () {
+                            // Change the text to "edit" on hover
+                            const markerDiv = document.getElementById(`marker-${id}`);
+                            if (markerDiv) {
+                                markerDiv.textContent = 'edit';
+                            }
+                        })
+                        .on('mouseout', function () {
+                            // Change the text back to the original
+                            const markerDiv = document.getElementById(`marker-${id}`);
+                            if (markerDiv) {
+                                markerDiv.textContent = `gap ${id + 1}`;
+                            }
+                        })
+                        .addTo(map);
+
+                        dropoutWaypointPlotLayers.push(layer);
+
+
+                    }
+                    else {
+                        buttonWrapperColour = 'rgb(200,5,5)';
+                        plotPolylineFromFullActivity({records: dropoutRecord.records}, dropoutPlotLayers, map, buttonWrapperColour);
+
+                    
+
+                        // layer = L.polyline([dropouts[i].startPosition, dropouts[i].endPosition], {
+                        //     color: 'red',
+                        //     weight: 4, // Line thickness
+                        //     // opacity: 0.8,
+                        //     // dashArray: '5, 10' // Defines the pattern of dashes and gaps
+                        // }).addTo(map);
+
+                        // dropoutPlotLayers.push(layer);
+
+                        const distanceBetweenDropoutElememnts = calculatePolylineLength([dropouts[id].startPosition, dropouts[id].endPosition]);
+                        const result = findPointOnPolyline([dropouts[id].startPosition, dropouts[id].endPosition], distanceBetweenDropoutElememnts/2);
+
+                        const size = 30;
+                        layer = L.marker(result, {
+                            icon: L.divIcon({
+                                className: '', // No extra classes
+                                html: `
+                                    <div id="marker-${id}" style="
+                                        display: flex; 
+                                        justify-content: center; 
+                                        align-items: center; 
+                                        width: ${size}px; 
+                                        height: ${size}px; 
+                                        border-radius: 50%; 
+                                        background-color: rgba(255, 0, 0, 0.7);
+                                        color: white; 
+                                        font-size: 10px; 
+                                        font-weight: bold;
+                                        text-align: center;">
+                                        gap ${id+1}
+                                    </div>
+                                `,
+                                iconSize: [size, size], // Match the size of the circle
+                                iconAnchor: [size/2, size/2], // Center the icon on the coordinate
+                            }),
+                        })
+                        .on('click', function () {
+                             displayEditGapUi(id, true);
+                        })
+                        .on('mouseover', function () {
+                            // Change the text to "edit" on hover
+                            const markerDiv = document.getElementById(`marker-${id}`);
+                            if (markerDiv) {
+                                markerDiv.textContent = 'edit';
+                            }
+                        })
+                        .on('mouseout', function () {
+                            // Change the text back to the original
+                            const markerDiv = document.getElementById(`marker-${id}`);
+                            if (markerDiv) {
+                                markerDiv.textContent = `gap ${id + 1}`;
+                            }
+                        })
+                        .addTo(map);
+
+                        dropoutWaypointPlotLayers.push(layer);
+                    }
+
+
+                    // startAndEndWaypoints = [dropouts[dropoutIndexToUse].startPosition, dropouts[dropoutIndexToUse].endPosition];
+
+                    // console.log(startAndEndWaypoints);
+
+
+
+                    var buttonWrapper = document.createElement('div');
+                    buttonWrapper.id = `show-gaps-button-wrapper-${id}`;
+                    buttonWrapper.style.display = 'flex';
+
+                    buttonWrapper.style.alignItems = "center";
+                    // buttonWrapper.style.backgroundColor= "purple";
+                    buttonWrapper.style.backgroundColor = buttonWrapperColour;
+                    buttonWrapper.style.backgroundOpacity = 0.7;
+                    /* height: 16px; */
+                    buttonWrapper.style.width = "80%";
+
+                    buttonWrapper.style.padding = "8px 16px";
+                    buttonWrapper.style.margin = "10px 0";
+                    buttonWrapper.style.border = "none";
+                    buttonWrapper.style.borderRadius = "4px";
+                    buttonWrapper.style.color = "white";
+                    buttonWrapper.style.fontSize = "14px";
+
+
+                    var showGapButton = document.createElement('button');
+                    showGapButton.id = `show-gap-button-${id}`;
+                    showGapButton.style.marginLeft = '2px';
+                    showGapButton.textContent = `Show gap ${id+1}`;
+                    
+
+                    showGapButton.addEventListener('click', function () {
+                    
+                        // zoomMapToPolylineBounds({records: dropoutRecord.records}, map);
+                        zoomMapToBounds(dropoutRecordBounds, map);
+
+
+                    });
+
+                    buttonWrapper.appendChild(showGapButton);
+
+                    var editGapButton = document.createElement('button');
+                    editGapButton.id = `edit-gap-button-${id}`;
+                    editGapButton.style.marginLeft = '2px';
+                    editGapButton.textContent = `Edit gap ${id+1}`;
+                    
+
+                    editGapButton.addEventListener('click', function () {
+                        displayEditGapUi(id, true);
+
+
+                    });
+
+                    buttonWrapper.appendChild(editGapButton);
+
+                    if (dropoutRecord.hasBeenRemapped){
+                        var discardChangesButton = document.createElement('button');
+                        discardChangesButton.id = `discard-gap-button-${id}`;
+                        discardChangesButton.style.marginLeft = '2px';
+                        discardChangesButton.textContent = `Discard Changes to gap ${id+1}`;
+                        
+
+                        discardChangesButton.addEventListener('click', function () {
+
+                            clickedCoordinates[id] = [];
+
+                            handler.resetDropout(id);
+
+                            displayFindGapsUi();
+                        });
+
+
+
+                        buttonWrapper.appendChild(discardChangesButton);
+                    }
+
+                    const distance = initialDropoutDistances[id];
+                    const velocity = distance/initialDropoutTimes[id];
+
+                    const distanceDisplay = parseFloat(distance/1000).toFixed(2);
+                    const velocityDisplay = parseFloat(velocity*3.6).toFixed(2);
+
+                    const initialStatsTextBox = document.createElement('div');
+                    initialStatsTextBox.id = `initial-stats-text-box-${id}`;
+                    initialStatsTextBox.innerHTML = `Initial distance: ${distanceDisplay}km<br>Initial velocity: ${velocityDisplay}km/h`;
+                    initialStatsTextBox.style.marginLeft = '2px';
+
+                    buttonWrapper.appendChild(initialStatsTextBox);
+
+                    if (dropoutRecord.hasBeenRemapped){
+                        const distanceRemapped = calculateTotalDistance(dropoutRecord.records);
+                        const velocityRemapped = distanceRemapped/calculateTotalTime(dropoutRecord.records);
+
+                        const distanceRemappedDisplay = parseFloat(distanceRemapped/1000).toFixed(2);
+                        const velocityRemappedDisplay = parseFloat(velocityRemapped*3.6).toFixed(2);
+
+                        const remappedStatsTextBox = document.createElement('div');
+                        remappedStatsTextBox.id = `remapped-stats-text-box-${id}`;
+                        remappedStatsTextBox.innerHTML = `Remapped distance: ${distanceRemappedDisplay}km<br>Remapped velocity: ${velocityRemappedDisplay}km/h`;
+                        remappedStatsTextBox.style.marginLeft = '2px';
+
+                        buttonWrapper.appendChild(remappedStatsTextBox);
+
+                    }
+
+
+
+                    wrapper.appendChild(buttonWrapper);
+                }
+
+                const downloadName = 'activity_juiced.tcx';
+
+                // Place the download button.
+                var buttonWrapper = document.createElement('div');
+                buttonWrapper.id = 'download-button-wrapper';
+                buttonWrapper.style.display = 'flex';
+
+                buttonWrapper.style.alignItems = "center";
+                buttonWrapper.style.backgroundColor= "blue";
+        /* height: 16px; */
+                buttonWrapper.style.width = "50%";
+
+                buttonWrapper.style.padding = "8px 16px";
+                buttonWrapper.style.margin = "10px 0";
+                buttonWrapper.style.border = "none";
+                buttonWrapper.style.borderRadius = "4px";
+                buttonWrapper.style.color = "white";
+                buttonWrapper.style.fontSize = "14px";
+
+                var downloadButton = document.createElement('button');
+                downloadButton.id = `download-button`;
+                downloadButton.style.marginLeft = '2px';
+                downloadButton.textContent = `Download`;
+                
+                downloadButton.addEventListener("click", () => {
+                    const tcxContent = createTcxFile(currentActivityData);
+                    const blob = new Blob([tcxContent], { type: "application/xml" });
+                    const url = URL.createObjectURL(blob);
+
+                    const link = document.createElement("a");
+                    link.href = url;
+                    link.download = downloadName;
+                    link.click();
+
+                    // Cleanup
+                    URL.revokeObjectURL(url);
+                });
+
+                buttonWrapper.appendChild(downloadButton);
+
+                const downloadTextBox = document.createElement('div');
+                downloadTextBox.id = 'download-text-box';
+                downloadTextBox.textContent = downloadName;
+                downloadTextBox.style.marginLeft = '2px';
+
+                buttonWrapper.appendChild(downloadTextBox);
+
+                wrapper.appendChild(buttonWrapper);
+
+                
+
+                // document.getElementById('display-gaps').style.display = 'inline-block';
+
+                // show the surrounding track in blue
+                // show the gaps in red
+                // show a button to edit the first gap
+                // show a button to accept the gaps and move on
+            } else {
+                // Print that there are no gaps and nothing to do
+                const noChangesTextBox = document.createElement('div');
+                noChangesTextBox.id = 'no-changes-text-box';
+                noChangesTextBox.textContent = `There are no gaps in the activity`;
+                noChangesTextBox.style.marginLeft = '2px';
+
+
+                wrapper.appendChild(noChangesTextBox);
+
+                document.getElementById('ui-container').appendChild(wrapper);
+            }
+
+            // var buttonWrapper = document.createElement('div');
+            // buttonWrapper.id = `accept-changes-button-wrapper`;
+            // buttonWrapper.style.display = 'flex';
+
+            // buttonWrapper.style.alignItems = "center";
+            // buttonWrapper.style.backgroundColor= "green";
+            // /* height: 16px; */
+            // buttonWrapper.style.width = "50%";
+
+            // buttonWrapper.style.padding = "8px 16px";
+            // buttonWrapper.style.margin = "10px 0";
+            // buttonWrapper.style.border = "none";
+            // buttonWrapper.style.borderRadius = "4px";
+            // buttonWrapper.style.color = "white";
+            // buttonWrapper.style.fontSize = "4px";
+
+
+            // var acceptChangesButton = document.createElement('button');
+            // acceptChangesButton.id = `accept-changes-button`;
+            // acceptChangesButton.style.marginLeft = '2px';
+            // acceptChangesButton.textContent = `Accept changes`;
+            
+
+            // acceptChangesButton.addEventListener('click', function () {
+            //     displaySummaryAndDownloadUi();
+            // });
+
+            // buttonWrapper.appendChild(acceptChangesButton);
+
+            // wrapper.appendChild(buttonWrapper);
+
+            var cancelButtonWrapper = document.createElement('div');
+            cancelButtonWrapper.id = 'cancel-button-wrapper';
+            cancelButtonWrapper.style.display = 'flex';
+
+            cancelButtonWrapper.style.alignItems = "center";
+            cancelButtonWrapper.style.backgroundColor= "red";
+    /* height: 16px; */
+            cancelButtonWrapper.style.width = "50%";
+
+            cancelButtonWrapper.style.padding = "8px 16px";
+            cancelButtonWrapper.style.margin = "10px 0";
+            cancelButtonWrapper.style.border = "none";
+            cancelButtonWrapper.style.borderRadius = "4px";
+            cancelButtonWrapper.style.color = "white";
+            cancelButtonWrapper.style.fontSize = "14px";
+
+            var cancelButton = document.createElement('button');
+            cancelButton.id = `download-button`;
+            cancelButton.style.marginLeft = '2px';
+            cancelButton.textContent = `Discard all data and upload new file`;
+            
+            cancelButton.addEventListener("click", () => {
+                displayFileUploadUi();
+
+            });
+
+            cancelButtonWrapper.appendChild(cancelButton);
+            wrapper.appendChild(cancelButtonWrapper);
+
+            document.getElementById('ui-container').appendChild(wrapper);
+
+
+            // if there are one or more gaps, 
+            // plot these in red
+            // Number the gaps
+            // show a button to edit the first gap
+            // else
+            // Print that there are no gaps and nothing to do
+
+
+            // If user presses the edit button, show the displayEditGapUi, for the first gap.
+
+            // console.log({location: "end of displayFindGapsUi()", clickedCoordinates: clickedCoordinates});
+        }
+
+        // function displaySingleGapUi() {
+        //     // show the surrounding track in blue
+        //     // Show this one gap in red. This shows current state, and will be 
+        //     // zoom the map view to just this gap
+        //     // Show a button to edit the gap
+        //     // if button pressed, show the displayEditGapUi
+        //     // Show a button to accept and move on
+
         // }
 
-        function placeAddAndRemoveUploadButtons()
-        {
-            // Delete the remove button so that it can be re-placed at the end. 
-            var addUploadButton = document.getElementById('remove-upload-button');
-            if (addUploadButton) addUploadButton.remove();
+        function displayEditGapUi(id, isFirstEvent) {
 
-            // Delete the add button so that it can be re-placed at the end.
-            var addUploadButton = document.getElementById('add-upload-button');
-            if (addUploadButton) addUploadButton.remove();
+            // console.log({clickedCoordinates: clickedCoordinates, id: id, clickedCoordinatesAtId: clickedCoordinates[id]});
+            // console.log({location: "start of single edit", clickedCoordinates: clickedCoordinates});
 
-            // The index of the last element of the input arrays.
-            const idOfLastUploadWrapper = dataInput.length - 1;
-            const lastUploadWrapper = document.getElementById(`upload-wrapper-${idOfLastUploadWrapper}`);
-            // const lastUploadWrapper = document.getElementById(`upload-wrapper-${dataInput.length - 1}`);
+            clearAllUi();
 
-            // console.log(`placeAddAndRemoveUploadButtons: upload-wrapper-${dataInput.length - 1}`);
+            // Initialize the control properly
+            mapEditControlBox = L.control({
+                position: 'bottomleft' // Position at the bottom left
+            });
 
-            // Add the remove button to the right of the last upload wrapper.
-            // Only add it if there are more than 2 uploads already. Can't have less than two uploads.
-            if ((dataInput.length) > 2) {
-                const removeButton = document.createElement('button');
-                removeButton.id = 'remove-upload-button';
-                removeButton.textContent = '-';
-                removeButton.className = 'button button-small';
-                removeButton.addEventListener('click', () => removeUploadField());
-                lastUploadWrapper.appendChild(removeButton);
-            }
+            // Define the onAdd function separately
+            mapEditControlBox.onAdd = function (map) {
+                var container = L.DomUtil.create('div', 'custom-buttons');
+
+                // Add styling
+                container.style.background = 'white';
+                container.style.padding = '10px';
+                container.style.borderRadius = '5px';
+                container.style.boxShadow = '0 1px 5px rgba(0,0,0,0.65)';
+
+                // Add buttons
+                // var button1 = L.DomUtil.create('button', '', container);
+                // button1.innerHTML = 'Accept Waypoints';
+                // button1.style.margin = '5px';
+                // button1.onclick = function () {
+                //     handler.remapDropout(id, allWaypoints);
+                //     displayFindGapsUi();
+                // };
+
+                // Common hover effect for both buttons
+                const applyHoverEffect = (button, originalColor, hoverColor) => {
+                    button.onmouseover = function () {
+                        button.style.backgroundColor = hoverColor;
+                    };
+                    button.onmouseout = function () {
+                        button.style.backgroundColor = originalColor;
+                    };
+                };
+
+                // Accept Button
+                var acceptButton = L.DomUtil.create('button', 'accept-button', container);
+                acceptButton.innerHTML = '<i class="fas fa-check"></i>';
+                acceptButton.style.backgroundColor = '#f8f9fa'; // Very light grey background
+                acceptButton.style.color = '#28a745'; // Green tick icon
+                acceptButton.style.border = 'none';
+                acceptButton.style.padding = '15px';
+                acceptButton.style.width = '50px'; // Make the button square
+                acceptButton.style.height = '50px'; // Make the button square
+                acceptButton.style.borderRadius = '5px'; // Slight rounding for a modern look
+                acceptButton.style.cursor = 'pointer';
+                acceptButton.style.display = 'flex';
+                acceptButton.style.justifyContent = 'center';
+                acceptButton.style.alignItems = 'center';
+
+                // Apply hover effect for Accept Button
+                applyHoverEffect(acceptButton, '#f8f9fa', '#e2e3e5'); // Original light grey, darker grey on hover
+
+
+                // Stop click propagation on Accept Button
+                L.DomEvent.disableClickPropagation(acceptButton);
+
+                acceptButton.onclick = function () {
+                    handler.remapDropout(id, allWaypoints);
+                    displayFindGapsUi();
+                };
+
+
+                if (clickedCoordinates[id].length > 0){
+
+                    var discardButton = L.DomUtil.create('button', 'discard-button', container);
+                    discardButton.innerHTML = '<i class="fas fa-trash"></i>';
+                    discardButton.style.backgroundColor = '#f8f9fa'; // Very light grey background
+                    discardButton.style.color = '#dc3545'; // Red trash icon
+                    discardButton.style.border = 'none';
+                    discardButton.style.padding = '15px';
+                    discardButton.style.width = '50px'; // Make the button square
+                    discardButton.style.height = '50px'; // Make the button square
+                    discardButton.style.borderRadius = '5px'; // Slight rounding for a modern look
+                    discardButton.style.cursor = 'pointer';
+                    discardButton.style.display = 'flex';
+                    discardButton.style.justifyContent = 'center';
+                    discardButton.style.alignItems = 'center';
+
+                    // Apply hover effect for Accept Button
+                    applyHoverEffect(discardButton, '#f8f9fa', '#e2e3e5'); // Original light grey, darker grey on hover
+
+
+                    // Stop click propagation on Discard Button
+                    L.DomEvent.disableClickPropagation(discardButton);
+
+                    discardButton.onclick = function () {
+                        clickedCoordinates[id] = [];
+
+                        handler.resetDropout(id);
+
+                        displayEditGapUi(id, false);
+                    };
+
+                    // var button2 = L.DomUtil.create('button', '', container);
+                    // button2.innerHTML = 'Clear waypoints';
+                    // button2.style.margin = '5px';
+                    // button2.onclick = function () {
+                    //     clickedCoordinates[id] = [];
+
+                    //     handler.resetDropout(id);
+
+                    //     displayEditGapUi(id, false);
+                    // };
+                }
+
+                return container;
+            };
+
+            // Add the control to the map
+            mapEditControlBox.addTo(map);
+
+            const wrapper = document.createElement('div');
+            wrapper.id = 'edit-single-gap';
+            // wrapper.className = 'ui-wrapper';
+
+            var buttonWrapper = document.createElement('div');
+            buttonWrapper.id = `edit-gap-button-wrapper-${id}`;
+            buttonWrapper.style.display = 'flex';
+
+            buttonWrapper.style.alignItems = "center";
+            buttonWrapper.style.backgroundColor= "purple";
+    /* height: 16px; */
+            buttonWrapper.style.width = "50%";
+
+            buttonWrapper.style.padding = "8px 16px";
+            buttonWrapper.style.margin = "10px 0";
+            buttonWrapper.style.border = "none";
+            buttonWrapper.style.borderRadius = "4px";
+            buttonWrapper.style.color = "white";
+            buttonWrapper.style.fontSize = "4px";
+
+
+            var acceptWaypointsButton = document.createElement('button');
+            acceptWaypointsButton.id = `accept-waypoints-button-${id}`;
+            acceptWaypointsButton.style.marginLeft = '2px';
+            acceptWaypointsButton.textContent = `Accept waypoints`;
             
-            // Add the add button to the bottom of the upload container.
-            if (dataInput.length < maxUploads) { 
-                addUploadButton = document.createElement('button');
-                addUploadButton.id = 'add-upload-button';
-                addUploadButton.textContent = '+';
-                addUploadButton.className = 'button button-small';
-                addUploadButton.addEventListener('click', createUploadField);
 
-                uploadContainer.appendChild(addUploadButton);
+            acceptWaypointsButton.addEventListener('click', function () {
+                handler.remapDropout(id, allWaypoints);
+                displayFindGapsUi();
+            });
+
+            buttonWrapper.appendChild(acceptWaypointsButton);
+
+            if (clickedCoordinates[id].length>0){
+
+                // reset bounds only the first time.
+
+
+
+
+                var clearWaypointsButton = document.createElement('button');
+                clearWaypointsButton.id = `edit-gap-button-${id}`;
+                clearWaypointsButton.style.marginLeft = '2px';
+                clearWaypointsButton.textContent = `Clear Waypoints`;
+                
+
+                clearWaypointsButton.addEventListener('click', function () {
+
+                    clickedCoordinates[id] = [];
+
+                    handler.resetDropout(id);
+
+                    displayEditGapUi(id, false);
+
+
+                });
+
+
+
+                buttonWrapper.appendChild(clearWaypointsButton);
             }
+
+
+            wrapper.appendChild(buttonWrapper);
+        
+
+            document.getElementById('ui-container').appendChild(wrapper);
+
+
+            
+
+
+
+            allWaypoints = [dropouts[id].startPosition, ...clickedCoordinates[id], dropouts[id].endPosition];
+
+            layer = L.polyline(allWaypoints, {
+                color: 'blue',
+                weight: 4, // Line thickness
+                // opacity: 0.8,
+                // dashArray: '5, 10' // Defines the pattern of dashes and gaps
+            }).addTo(map);
+
+            dropoutWaypointPlotLayers.push(layer);
+
+            // handler.remapDropout(id, allWaypoints);
+
+            // const currentActivityData = handler.getRemappedData();
+
+            // plotPolylineFromFullActivity(currentActivityData, fullActivityPlotLayers, map, 'blue');
+
+            const lastLine = [allWaypoints[allWaypoints.length-2], allWaypoints[allWaypoints.length-1]];
+
+
+
+            // plot a guide showing where to click
+            // plot a line between second last and last waypoints.
+            layer = L.polyline(lastLine, {
+                color: 'red',
+                weight: 4, // Line thickness
+                // opacity: 0.8,
+                // dashArray: '5, 10' // Defines the pattern of dashes and gaps
+            }).addTo(map);
+
+            dropoutWaypointPlotLayers.push(layer);
+
+            const distanceBetweenLastElements = calculatePolylineLength(lastLine);
+            const result = findPointOnPolyline(lastLine, distanceBetweenLastElements/2);
+
+            const size = 20;
+                layer = L.marker(result, {
+                    draggable: true,
+                    icon: L.divIcon({
+                        className: '', // No extra classes
+                        // html: `
+                        //     <div style="
+                        //         display: flex; 
+                        //         justify-content: center; 
+                        //         align-items: center; 
+                        //         width: ${size}px; 
+                        //         height: ${size}px; 
+                        //         border-radius: 50%; 
+                        //         background-color: red;
+                        //         color: white; 
+                        //         font-size: 5px; 
+                        //         font-weight: bold;
+                        //         text-align: center;">
+                        //         ''
+                        //     </div>
+                        // `,
+                        html: `
+                            <div id="new-coord-${id}" style="
+                                display: flex; 
+                                justify-content: center; 
+                                align-items: center; 
+                                width: ${size}px; 
+                                height: ${size}px; 
+                                border-radius: 50%; 
+                                background-color: rgba(255, 0, 0, 0.7);
+                                color: white; 
+                                font-size: 10px; 
+                                font-weight: bold;
+                                text-align: center;">
+                                +
+                            </div>
+                        `,
+                        iconSize: [size, size], // Match the size of the circle
+                        iconAnchor: [size/2, size/2], // Center the icon on the coordinate
+                    }),
+                })
+                // ${clickedCoordinates[id].length+1}
+
+                // .on('dragstart', function (e) {
+                //     // Get the updated location
+                //     const newLatLng = e.target.getLatLng();
+
+                //     // Example: Display updated coordinates in an alert
+                //     // alert(`Marker ${id + 1} new location: Lat ${newLatLng.lat}, Lng ${newLatLng.lng}`);
+
+                //     const currentId = id; // Capture the current ID
+
+                //     // Ensure clickedCoordinates is properly initialized
+                //     clickedCoordinates[currentId] = clickedCoordinates[currentId] || [];
+
+                //     // Add the clicked coordinate
+                //     const lat = newLatLng.lat.toFixed(6);
+                //     const lng = newLatLng.lng.toFixed(6);
+                //     clickedCoordinates[currentId].push([parseFloat(lat), parseFloat(lng)]);
+
+                //     // Update the UI
+                //     displayEditGapUi(currentId, false);
+                // })
+                .on('mouseover', function () {
+                    // Change the text to "edit" on hover
+                    const markerDiv = document.getElementById(`new-coord-${id}`);
+                    if (markerDiv) {
+                        markerDiv.textContent = 'Drag';
+                    }
+                })
+                .on('mouseout', function () {
+                    // Change the text back to the original
+                    const markerDiv = document.getElementById(`new-coord-${id}`);
+                    if (markerDiv) {
+                        markerDiv.textContent = "+";
+                    }
+                })
+                .on('dragend', function (e) {
+                    // Get the updated location
+                    const newLatLng = e.target.getLatLng();
+
+                    const currentId = id; // Capture the current ID
+
+                    // Ensure clickedCoordinates is properly initialized
+                    clickedCoordinates[currentId] = clickedCoordinates[currentId] || [];
+
+                    // Add the clicked coordinate
+                    const lat = newLatLng.lat.toFixed(6);
+                    const lng = newLatLng.lng.toFixed(6);
+                    clickedCoordinates[currentId].push([parseFloat(lat), parseFloat(lng)]);
+
+                    // Update the UI
+                    displayEditGapUi(currentId, false);
+                })
+                .addTo(map);
+
+                dropoutWaypointPlotLayers.push(layer);
+
+
+            // Show the intermediate waypoints that have already been placed. These can be dragged.
+            for (let i = 0; i<clickedCoordinates[id].length; i++) {
+
+                const size = 20;
+                layer = L.marker(clickedCoordinates[id][i], {
+                    draggable: true,
+                    icon: L.divIcon({
+                        className: '', // No extra classes
+                        html: `
+                            <div id="clicked-coord-${id}-${i}" style="
+                                display: flex; 
+                                justify-content: center; 
+                                align-items: center; 
+                                width: ${size}px; 
+                                height: ${size}px; 
+                                border-radius: 50%; 
+                                background-color: blue;
+                                background-opacity: 0.7;
+                                color: white; 
+                                font-size: 9px; 
+                                font-weight: bold;
+                                text-align: center;">
+                                ${i+1}
+                            </div>
+                        `,
+                        iconSize: [size, size], // Match the size of the circle
+                        iconAnchor: [size/2, size/2], // Center the icon on the coordinate
+                    }),
+                })
+                .on('mouseover', function () {
+
+                    const currentId = id;
+
+                    // Change the text to "edit" on hover
+                    const markerDiv = document.getElementById(`clicked-coord-${currentId}-${i}`);
+                    if (markerDiv) {
+                        markerDiv.textContent = 'Drag';
+                    }
+                })
+                .on('mouseout', function () {
+
+                    const currentId = id;
+                    // Change the text back to the original
+                    const markerDiv = document.getElementById(`clicked-coord-${currentId}-${i}`);
+                    if (markerDiv) {
+                        markerDiv.textContent = `${i+1}`;
+                    }
+                })
+                .on('dragend', function (e) {
+                    // Get the updated location
+                    const newLatLng = e.target.getLatLng();
+
+                    const currentId = id; // Capture the current ID
+
+                    // Ensure clickedCoordinates is properly initialized
+                    clickedCoordinates[currentId] = clickedCoordinates[currentId] || [];
+
+                    // Add the clicked coordinate
+                    const lat = newLatLng.lat.toFixed(6);
+                    const lng = newLatLng.lng.toFixed(6);
+
+                    // Overwrite the variable 
+                    clickedCoordinates[currentId][i] = [parseFloat(lat), parseFloat(lng)];
+
+                    // Update the UI
+                    displayEditGapUi(currentId, false);
+                })
+                .addTo(map);
+
+                dropoutWaypointPlotLayers.push(layer);
+
+            }
+
+            // Show the start and end waypoints. these can't be edited.
+            for (let i = 0; i<allWaypoints.length; i++) {
+
+                // Plot text numbers over the waypoints
+                var text = '';
+                if (i==0) {
+                    text = 'start';
+                }
+                else if (i==allWaypoints.length-1) {
+                    text = 'end';
+                }
+                else {
+                    // only execute if it's the start or the end.
+                    continue;
+                }
+
+                // layer = L.marker(allWaypoints[i], {
+                //     icon: L.divIcon({
+                //         className: 'custom-text-icon', // Custom class for styling
+                //         html: text, // The text to display
+                //         // html: '<span style="font-size: 10px; color: red; background: transparent; border: none;">' + text + '</span>',
+                //         // html: '<span style="font-size: 10px; color: red;"">' + text + '</span>',
+                //         iconSize: null, // No icon size, so it adjusts to text
+                //     }),
+                // }).addTo(map);
+                const size = 20;
+                layer = L.marker(allWaypoints[i], {
+                    icon: L.divIcon({
+                        className: '', // No extra classes
+                        html: `
+                            <div style="
+                                display: flex; 
+                                justify-content: center; 
+                                align-items: center; 
+                                width: ${size}px; 
+                                height: ${size}px; 
+                                border-radius: 50%; 
+                                background-color: green;
+                                background-opacity: 0.7;
+                                color: white; 
+                                font-size: 9px; 
+                                font-weight: bold;
+                                text-align: center;">
+                                ${text}
+                            </div>
+                        `,
+                        iconSize: [size, size], // Match the size of the circle
+                        iconAnchor: [size/2, size/2], // Center the icon on the coordinate
+                    }),
+                }).addTo(map);
+
+                dropoutWaypointPlotLayers.push(layer);
+
+            }
+
+            // zoom the map to bounds only if no waypoints have been clicked yet.
+            if (isFirstEvent) {
+                const bounds = calculateRecordBounds(allWaypoints.map(coord => ({ position: coord })));
+                zoomMapToBounds(bounds, map);
+            }
+
+
+            // show a button to exit edit mode with no changes
+            // go back to the 
+            // show a button to accept the changes. 
+            // if button pressed, update the gap points and displaySingleGapUi()
+            // if at least one waypoint has been added, show a button to clear and start again
+            // if button pressed, show the original gap again.
+
+            // Add an event listener for mouse clicks on the map
+
+
+            map.on('click', function (e) {
+                const currentId = id; // Capture the current ID
+
+                // Ensure clickedCoordinates is properly initialized
+                clickedCoordinates[currentId] = clickedCoordinates[currentId] || [];
+
+                // Add the clicked coordinate
+                const lat = e.latlng.lat.toFixed(6);
+                const lng = e.latlng.lng.toFixed(6);
+                clickedCoordinates[currentId].push([parseFloat(lat), parseFloat(lng)]);
+
+                // Update the UI
+                displayEditGapUi(currentId, false);
+
+            });
+
+            // console.log({location: "end of single edit", clickedCoordinates: clickedCoordinates});
+
+        
+
+
+
         }
 
-        function placeDownloadButton(activityData) {
+        function displaySummaryAndDownloadUi() {
 
-            const downloadName = 'activity_joined.tcx';
+            clearAllUi();
 
-            const downloadBox = document.getElementById('download-box');
-            downloadBox.textContent = '';
+            const currentActivityData = handler.getRemappedData();
 
-            var downloadButton = document.getElementById('download-button');
-            if (downloadButton) downloadButton.remove();
+            // plotPolylineFromFullActivity(currentActivityData, fullActivityPlotLayers, map, 'blue');
 
-            downloadButton = document.createElement('button');
-            downloadButton.id = 'download-button';
+            plotPolylineFromFullActivity(currentActivityData, fullActivityPlotLayers, map, 'blue');
+
+            // dropouts.forEach(dropout => {
+            for (var i=0; i<dropouts.length; i++) {
+                const id = i;
+
+                const dropoutRecord = handler.getDropoutRecords(id);
+
+                if (dropoutRecord.hasBeenRemapped) {
+                    plotPolylineFromFullActivity({records: dropoutRecord.records}, dropoutPlotLayers, map, 'green');
+
+                }
+                else {
+                    plotPolylineFromFullActivity({records: dropoutRecord.records}, dropoutPlotLayers, map, 'red');
+
+                
+
+                    // layer = L.polyline([dropouts[i].startPosition, dropouts[i].endPosition], {
+                    //     color: 'red',
+                    //     weight: 4, // Line thickness
+                    //     // opacity: 0.8,
+                    //     // dashArray: '5, 10' // Defines the pattern of dashes and gaps
+                    // }).addTo(map);
+
+                    // dropoutPlotLayers.push(layer);
+
+                    const distanceBetweenDropoutElememnts = calculatePolylineLength([dropouts[id].startPosition, dropouts[id].endPosition]);
+                    const result = findPointOnPolyline([dropouts[id].startPosition, dropouts[id].endPosition], distanceBetweenDropoutElememnts/2);
+
+                    const size = 30;
+                    layer = L.marker(result, {
+                        icon: L.divIcon({
+                            className: '', // No extra classes
+                            html: `
+                                <div style="
+                                    display: flex; 
+                                    justify-content: center; 
+                                    align-items: center; 
+                                    width: ${size}px; 
+                                    height: ${size}px; 
+                                    border-radius: 50%; 
+                                    background-color: rgba(255, 0, 0, 0.7);
+                                    color: white; 
+                                    font-size: 10px; 
+                                    font-weight: bold;
+                                    text-align: center;">
+                                    gap ${id+1}
+                                </div>
+                            `,
+                            iconSize: [size, size], // Match the size of the circle
+                            iconAnchor: [size/2, size/2], // Center the icon on the coordinate
+                        }),
+                    }).addTo(map);
+
+                    dropoutWaypointPlotLayers.push(layer);
+                }
+
+            }
+
+            
+
+            const wrapper = document.createElement('div');
+            wrapper.id = 'summary-and-download';
+            // wrapper.className = 'ui-wrapper';
+
+            const downloadName = 'activity_juiced.tcx';
+
+            var buttonWrapper = document.createElement('div');
+            buttonWrapper.id = 'download-button-wrapper';
+            buttonWrapper.style.display = 'flex';
+
+            buttonWrapper.style.alignItems = "center";
+            buttonWrapper.style.backgroundColor= "blue";
+    /* height: 16px; */
+            buttonWrapper.style.width = "50%";
+
+            buttonWrapper.style.padding = "8px 16px";
+            buttonWrapper.style.margin = "10px 0";
+            buttonWrapper.style.border = "none";
+            buttonWrapper.style.borderRadius = "4px";
+            buttonWrapper.style.color = "white";
+            buttonWrapper.style.fontSize = "14px";
+
+            var downloadButton = document.createElement('button');
+            downloadButton.id = `download-button`;
+            downloadButton.style.marginLeft = '2px';
             downloadButton.textContent = `Download`;
-            downloadButton.className = 'button-download';
-
+            
             downloadButton.addEventListener("click", () => {
-                const tcxContent = createTcxFile(activityData);
+                const tcxContent = formatXml(createTcxFile(currentActivityData));
                 const blob = new Blob([tcxContent], { type: "application/xml" });
                 const url = URL.createObjectURL(blob);
 
@@ -241,113 +1485,464 @@
                 URL.revokeObjectURL(url);
             });
 
+            buttonWrapper.appendChild(downloadButton);
+
             const downloadTextBox = document.createElement('div');
             downloadTextBox.id = 'download-text-box';
             downloadTextBox.textContent = downloadName;
             downloadTextBox.style.marginLeft = '2px';
 
-            downloadBox.appendChild(downloadButton);
-            downloadBox.appendChild(downloadTextBox);
-        }
+            buttonWrapper.appendChild(downloadTextBox);
 
-        function removeDownloadButton() {
-            var downloadButton = document.getElementById('download-button');
-            if (downloadButton) downloadButton.remove();
+            wrapper.appendChild(buttonWrapper);
 
-            var downloadTextBox = document.getElementById('download-text-box');
-            if (downloadTextBox) downloadTextBox.remove();
+
+            var cancelButtonWrapper = document.createElement('div');
+            cancelButtonWrapper.id = 'cancel-button-wrapper';
+            cancelButtonWrapper.style.display = 'flex';
+
+            cancelButtonWrapper.style.alignItems = "center";
+            cancelButtonWrapper.style.backgroundColor= "red";
+    /* height: 16px; */
+            cancelButtonWrapper.style.width = "50%";
+
+            cancelButtonWrapper.style.padding = "8px 16px";
+            cancelButtonWrapper.style.margin = "10px 0";
+            cancelButtonWrapper.style.border = "none";
+            cancelButtonWrapper.style.borderRadius = "4px";
+            cancelButtonWrapper.style.color = "white";
+            cancelButtonWrapper.style.fontSize = "14px";
+
+            var cancelButton = document.createElement('button');
+            cancelButton.id = `download-button`;
+            cancelButton.style.marginLeft = '2px';
+            cancelButton.textContent = `Discard all data and upload new file`;
             
+            cancelButton.addEventListener("click", () => {
+                displayFileUploadUi();
 
-            const downloadBox = document.getElementById('download-box');
-            downloadBox.textContent = 'Upload a file into each input box';
-        }
+            });
 
-        function handleFileUpload(event, id) {
+            cancelButtonWrapper.appendChild(cancelButton);
+            wrapper.appendChild(cancelButtonWrapper);
+        
 
-            // Load the file into the dataInput array.
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function (e) {
-                const parser = new DOMParser();
-                const xml = parser.parseFromString(e.target.result, 'text/xml');
-                const data = processTcxXml(xml);
-
-                if(id in dataInput) {
-                    dataInput[id] = data;
-                }
-                else {
-                    throw new Error("attempting to push data into a non-existent index");
-                }
-                
-
-                // Handle the UI
-                const color = colors[id % colors.length]; // Cycle through the colours if more uploads than colours.
-                mapLayers[id] = plotPolylineOnMap(dataInput[id], map, mapLayers[id], color);
-                document.querySelector(`#upload-wrapper-${id} .button-danger`).style.display = 'inline-block';
-
-                checkAndMaybeAppendData();
-            };
-            reader.readAsText(file);
-
-            // console.log(dataInput[id]);
+            document.getElementById('ui-container').appendChild(wrapper);
 
         }
 
-        function clearUploadData(id) {
 
-            // Deleted the data from the dataInput array, if it exists.
-            if (dataInput[id]) dataInput[id] = null;
-            
-            // Handle the UI
-            clearPolylineFromMap(map, mapLayers[id]);
-            document.querySelector(`#upload-wrapper-${id} input`).value = '';
-            document.querySelector(`#upload-wrapper-${id} .button-danger`).style.display = 'none';
+        // function handleFileUpload(event) {
+
+        //     clickedCoordinates = [];
+
+        //     // Load the file into the dataInput array.
+        //     const file = event.target.files[0];
+        //     if (!file) return;
+
+        //     const reader = new FileReader();
+        //     reader.onload = function (e) {
+        //         const parser = new DOMParser();
+        //         const xml = parser.parseFromString(e.target.result, 'text/xml');
+        //         const data = processTcxXml(xml);
+
+        //         handler = new ActivityDropoutHandler(data, 1, 50);
+
+        //         dropouts = handler.getDropoutStartAndEnd();
+
+        //         startAndEndWaypoints = [dropouts[dropoutIndexToUse].startPosition, dropouts[dropoutIndexToUse].endPosition];
+
+        //         drawStuff();
+
+        //     };
+        //     reader.readAsText(file);
+
+        //     removeDownloadButton();
+
+        //     // console.log(dataInput[id]);
+
+        // }
 
 
-
-            checkAndMaybeClearOutputData();
-        }
-
-        function checkAndMaybeAppendData() {
-            if (dataInput.every(element => element !== null)) {
-                const appendedData = appendActivitiesSimple(dataInput);
-                outputMapLayer = plotPolylineOnMap(appendedData, map, outputMapLayer, outputColor);
-
-                placeDownloadButton(appendedData);
+        function clearLayersFromMap(layerList, map) {
+            if (layerList.length > 0) {
+                layerList.forEach(layer => {
+                    map.removeLayer(layer);
+                });
+                layerList = [];
             }
         }
 
-        function checkAndMaybeClearOutputData() {
-            if (!dataInput.every(element => element !== null)) {
-                clearPolylineFromMap(map, outputMapLayer);
-                removeDownloadButton();
-            }
-        }
 
-        function removeUploadField() {
-            
-            // The index of the last element of the input arrays.
-            const idToRemove = dataInput.length-1;
 
-            // Remove the last element from the dataInput array.
-            dataInput.pop();
+        // function drawStuff() {
 
-            // Handler the UI.
-            clearUploadData(idToRemove);
-            document.getElementById(`upload-wrapper-${idToRemove}`).remove();
 
-            // console.log(`remove upload-wrapper-${idToRemove}`);
 
-            placeAddAndRemoveUploadButtons();
 
-            checkAndMaybeAppendData();
-        }
 
-        // Add initial upload fields
-        createUploadField();
-        createUploadField();
+        //     // Update the coordinate list display
+        //     // coordinateListDiv.textContent = allWaypoints.map(coord => `(${coord[0]}, ${coord[1]})`).join('\n');
+
+        //     // Show the clear button if the list has items
+        //     if (clickedCoordinates.length > 0) {
+        //         clearButton.style.display = 'inline-block';
+        //         acceptButton.style.display = 'inline-block';
+        //     }
+
+        //     // Clear the existing layer (if any) before adding new markers/polylines
+        //     // if (polylineLayer) {
+        //     //     map.removeLayer(polylineLayer);
+        //     // }
+
+        //     if (polylineLayers.length > 0) {
+        //         polylineLayers.forEach(layer => {
+        //             map.removeLayer(layer);
+        //         });
+        //         polylineLayers = [];
+        //     }
+
+        //     // if (distanceMarkerLayer) {
+        //     //     map.removeLayer(distanceMarkerLayer);
+        //     // }
+
+        //     if (distanceMarkerLayers.length > 0) {
+        //         distanceMarkerLayers.forEach(layer => {
+        //             map.removeLayer(layer);
+        //         });
+        //         distanceMarkerLayers = [];
+        //     }
+
+        //     if (textMarkerLayers.length > 0) {
+        //         textMarkerLayers.forEach(layer => {
+        //             map.removeLayer(layer);
+        //         });
+        //         textMarkerLayers = [];
+        //     }
+
+        //     // If there's only one coordinate, place a blue dot
+        //     // if (allWaypoints.length === 1) {
+        //     //     polylineLayer = L.circleMarker(allWaypoints[0], {
+        //     //         color: 'blue',
+        //     //         radius: 8 // Adjust the size of the dot
+        //     //     }).addTo(map);
+        //     // } 
+        //     // If there are multiple coordinates, draw a blue polyline
+        //     if (startAndEndWaypoints && startAndEndWaypoints.length > 1) {
+        //         allWaypoints = [startAndEndWaypoints[0], ...clickedCoordinates, startAndEndWaypoints[1]];
+        //         layer = L.polyline(allWaypoints, {
+        //             color: 'blue',
+        //             weight: 4, // Line thickness
+        //             opacity: 0.8
+        //         }).addTo(map);
+
+        //         polylineLayers.push(layer);
+
+        //         if (editWaypointsMode) {
+
+        //             const lastLine = [allWaypoints[allWaypoints.length - 2], allWaypoints[allWaypoints.length - 1]];
+
+        //             // plot a guide showing where to click
+        //             // plot a line between second last and last waypoints.
+        //             layer = L.polyline(lastLine, {
+        //                 color: 'red',
+        //                 weight: 4, // Line thickness
+        //                 // opacity: 0.8,
+        //                 // dashArray: '5, 10' // Defines the pattern of dashes and gaps
+        //             }).addTo(map);
+
+        //             polylineLayers.push(layer);
+
+        //             const distanceBetweenLastElements = calculatePolylineLength(lastLine);
+        //             const result = findPointOnPolyline(lastLine, distanceBetweenLastElements / 2);
+
+        //             const size = 15;
+        //             layer = L.marker(result, {
+        //                 icon: L.divIcon({
+        //                     className: '', // No extra classes
+        //                     // html: `
+        //                     //     <div style="
+        //                     //         display: flex; 
+        //                     //         justify-content: center; 
+        //                     //         align-items: center; 
+        //                     //         width: ${size}px; 
+        //                     //         height: ${size}px; 
+        //                     //         border-radius: 50%; 
+        //                     //         background-color: red;
+        //                     //         color: white; 
+        //                     //         font-size: 5px; 
+        //                     //         font-weight: bold;
+        //                     //         text-align: center;">
+        //                     //         ''
+        //                     //     </div>
+        //                     // `,
+        //                     html: `
+        //                             <div style="
+        //                                 display: flex; 
+        //                                 justify-content: center; 
+        //                                 align-items: center; 
+        //                                 width: ${size}px; 
+        //                                 height: ${size}px; 
+        //                                 border-radius: 50%; 
+        //                                 background-color: rgba(255, 0, 0, 0.7);
+        //                                 color: white; 
+        //                                 font-size: 10px; 
+        //                                 font-weight: bold;
+        //                                 text-align: center;">
+        //                                 O
+        //                             </div>
+        //                         `,
+        //                     iconSize: [size, size], // Match the size of the circle
+        //                     iconAnchor: [size / 2, size / 2], // Center the icon on the coordinate
+        //                 }),
+        //             }).addTo(map);
+
+        //             textMarkerLayers.push(layer);
+
+        //             for (let i = 0; i < allWaypoints.length; i++) {
+
+
+        //                 // Plot text numbers over the waypoints
+        //                 var text = '';
+        //                 if (i == 0) {
+        //                     text = 'start';
+        //                 }
+        //                 else if (i == allWaypoints.length - 1) {
+        //                     text = 'end';
+        //                 }
+        //                 else {
+        //                     text = `${i}`;
+        //                 }
+
+        //                 // layer = L.marker(allWaypoints[i], {
+        //                 //     icon: L.divIcon({
+        //                 //         className: 'custom-text-icon', // Custom class for styling
+        //                 //         html: text, // The text to display
+        //                 //         // html: '<span style="font-size: 10px; color: red; background: transparent; border: none;">' + text + '</span>',
+        //                 //         // html: '<span style="font-size: 10px; color: red;"">' + text + '</span>',
+        //                 //         iconSize: null, // No icon size, so it adjusts to text
+        //                 //     }),
+        //                 // }).addTo(map);
+        //                 const size = 20;
+        //                 layer = L.marker(allWaypoints[i], {
+        //                     icon: L.divIcon({
+        //                         className: '', // No extra classes
+        //                         html: `
+        //                             <div style="
+        //                                 display: flex; 
+        //                                 justify-content: center; 
+        //                                 align-items: center; 
+        //                                 width: ${size}px; 
+        //                                 height: ${size}px; 
+        //                                 border-radius: 50%; 
+        //                                 background-color: blue;
+        //                                 background-opacity: 0.7;
+        //                                 color: white; 
+        //                                 font-size: 9px; 
+        //                                 font-weight: bold;
+        //                                 text-align: center;">
+        //                                 ${text}
+        //                             </div>
+        //                         `,
+        //                         iconSize: [size, size], // Match the size of the circle
+        //                         iconAnchor: [size / 2, size / 2], // Center the icon on the coordinate
+        //                     }),
+        //                 }).addTo(map);
+
+        //                 textMarkerLayers.push(layer);
+
+        //             }
+
+        //             // const totalPolylineDistance = calculatePolylineLength(allWaypoints);
+        //             // const distancePerIncrement = totalPolylineDistance/(numberOfIntermediateTrackPoints+1);
+
+        //             // var runningDistance = 0;
+
+        //             // for (let i = 0; i < numberOfIntermediateTrackPoints; i++) {
+        //             //     runningDistance += distancePerIncrement;
+
+        //             //     const pointResult  = findPointOnPolyline(allWaypoints, runningDistance);
+
+        //             //     if (pointResult.error) {
+        //             //         console.error(`Error: ${pointResult.error}`);
+        //             //     } else {
+        //             //     //     layer = L.circleMarker(pointResult, {
+        //             //     //         color: 'red',
+        //             //     //         radius: 2 // Adjust the size of the dot
+        //             //     //     }).addTo(map);
+
+        //             //     //     distanceMarkerLayers.push(layer);
+        //             //     }
+
+        //             // }
+
+
+
+
+        //         }
+
+        //     }
+
+        //     // Zoom the map to fit the polyline
+        //     // map.fitBounds(polyline.getBounds());
+
+        // }
+
+        // Add an event listener for the clear button
+        // acceptButton.addEventListener('click', function () {
+        //     // Clear the coordinates list
+        //     startAndEndWaypoints = null;
+        //     // coordinateListDiv.textContent = 'No coordinates yet.';
+
+        //     // Remove the current layer from the map
+        //     if (polylineLayers.length > 0) {
+        //         polylineLayers.forEach(layer => {
+        //             map.removeLayer(layer);
+        //         });
+        //         polylineLayers = [];
+        //     }
+
+        //     if (distanceMarkerLayers.length > 0) {
+        //         distanceMarkerLayers.forEach(layer => {
+        //             map.removeLayer(layer);
+        //         });
+        //         distanceMarkerLayers = [];
+        //     }
+
+        //     if (textMarkerLayers.length > 0) {
+        //         textMarkerLayers.forEach(layer => {
+        //             map.removeLayer(layer);
+        //         });
+        //         textMarkerLayers = [];
+        //     }
+
+        //     handler.remapDropout(dropoutIndexToUse, allWaypoints);
+
+        //     activityData = handler.getRemappedData();
+
+        //     var positions = activityData.records
+        //         .map(entry => entry.position)
+        //         .filter(position => position[0] !== null && position[1] !== null);
+
+        //     // console.log(positions);
+
+        //     // Create a polyline and add it to the map
+        //     // mapLayer = L.polyline(positions, { color: colour }).addTo(map);
+
+        //     layer = L.polyline(positions, {
+        //         color: 'red',
+        //         weight: 4, // Line thickness
+        //         // opacity: 0.8,
+        //         // dashArray: '5, 10' // Defines the pattern of dashes and gaps
+        //     }).addTo(map);
+
+        //     polylineLayers.push(layer);
+
+
+
+
+        //     // Hide the clear button if the list is empty
+        //     acceptButton.style.display = 'none';
+        //     clearButton.style.display = 'none';
+        //     // drawStuff();
+
+        //     placeDownloadButton(activityData);
+
+
+
+        // });
+
+
+
+        // Add an event listener for the clear button
+        // clearButton.addEventListener('click', function () {
+        //     // Clear the coordinates list
+        //     clickedCoordinates = [];
+        //     // coordinateListDiv.textContent = 'No coordinates yet.';
+
+        //     // Remove the current layer from the map
+        //     if (polylineLayers.length > 0) {
+        //         polylineLayers.forEach(layer => {
+        //             map.removeLayer(layer);
+        //         });
+        //         polylineLayers = [];
+        //     }
+
+        //     if (distanceMarkerLayers.length > 0) {
+        //         distanceMarkerLayers.forEach(layer => {
+        //             map.removeLayer(layer);
+        //         });
+        //         distanceMarkerLayers = [];
+        //     }
+
+        //     if (textMarkerLayers.length > 0) {
+        //         textMarkerLayers.forEach(layer => {
+        //             map.removeLayer(layer);
+        //         });
+        //         textMarkerLayers = [];
+        //     }
+
+
+        //     // Hide the clear button if the list is empty
+        //     clearButton.style.display = 'none';
+        //     removeDownloadButton();
+        //     drawStuff();
+
+        // });
+
+        // function placeDownloadButton(activityData) {
+
+        //     const downloadName = 'activity_juiced.tcx';
+
+        //     const downloadBox = document.getElementById('download-box');
+        //     downloadBox.textContent = '';
+        //     downloadBox.style.display = 'inline-block';
+
+        //     var downloadButton = document.getElementById('download-button');
+        //     if (downloadButton) downloadButton.remove();
+
+        //     downloadButton = document.createElement('button');
+        //     downloadButton.id = 'download-button';
+        //     downloadButton.textContent = `Download`;
+        //     downloadButton.className = 'button-download';
+
+        //     downloadButton.addEventListener("click", () => {
+        //         const tcxContent = formatXml(createTcxFile(activityData));
+        //         const blob = new Blob([tcxContent], { type: "application/xml" });
+        //         const url = URL.createObjectURL(blob);
+
+        //         const link = document.createElement("a");
+        //         link.href = url;
+        //         link.download = downloadName;
+        //         link.click();
+
+        //         // Cleanup
+        //         URL.revokeObjectURL(url);
+        //     });
+
+        //     const downloadTextBox = document.createElement('div');
+        //     downloadTextBox.id = 'download-text-box';
+        //     downloadTextBox.textContent = downloadName;
+        //     downloadTextBox.style.marginLeft = '2px';
+
+        //     downloadBox.appendChild(downloadButton);
+        //     downloadBox.appendChild(downloadTextBox);
+        // }
+
+        // function removeDownloadButton() {
+        //     var downloadButton = document.getElementById('download-button');
+        //     if (downloadButton) downloadButton.remove();
+
+        //     var downloadTextBox = document.getElementById('download-text-box');
+        //     if (downloadTextBox) downloadTextBox.remove();
+
+
+        //     const downloadBox = document.getElementById('download-box');
+        //     // downloadBox.textContent = 'Upload a file into each input box';
+        //     downloadBox.style.display = 'none';
+        // }
+
     </script>
 </body>
+
 </html>
