@@ -252,11 +252,11 @@ function processTcxXml(xml) {
 
             // Calculate incremental values
             const incrementalDistance = distance !== null ? distance - previousDistance : null;
-            const incrementalCalories = lapCalorieRate ? lapCalorieRate * (trackpoint.getElementsByTagName('TotalTimeSeconds')[0]?.textContent || 0) : 0;
+            // const incrementalCalories = lapCalorieRate ? lapCalorieRate * (trackpoint.getElementsByTagName('TotalTimeSeconds')[0]?.textContent || 0) : 0;
 
             // Update previous values
             previousDistance = distance !== null ? distance : previousDistance;
-            previousCalories += incrementalCalories;
+            // previousCalories += incrementalCalories;
 
             if (previousTimeS) {
 
@@ -264,8 +264,6 @@ function processTcxXml(xml) {
                 const timeDeltaS = currentTimeS - previousTimeS;
 
                 cumulativeDuration += timeDeltaS;
-
-                previousTimeS = currentTimeS;
             }
 
             // Store the data for this trackpoint
@@ -1005,7 +1003,7 @@ function createTcxFile(activityData) {
 
         // Initialize lap-specific metrics
         let lapCumulativeDistance = 0;
-        let lapCumulativeCalories = 0;
+        // let lapCumulativeCalories = 0;
         let lapMaxSpeed = 0;
 
         // Add lap data
@@ -1051,10 +1049,13 @@ function createTcxFile(activityData) {
                 lapCumulativeDistance += record.distance;
             }
 
-            if (record.calorieRate !== null && record.calorieRate > 0) {
-                const timeDifference = record.timestamp ? (new Date(record.timestamp).getTime() - new Date(lap.startTime).getTime()) / 1000 : 0;
-                lapCumulativeCalories += record.calorieRate * timeDifference;
-            }
+
+
+            // if (record.calorieRate !== null && record.calorieRate > 0) {
+            //     // This timedelta calc is incorrect.
+            //     const timeDifference = record.timestamp ? (new Date(record.timestamp).getTime() - new Date(lap.startTime).getTime()) / 1000 : 0;
+            //     lapCumulativeCalories += record.calorieRate * timeDifference;
+            // }
 
             if (record.speed !== null && record.speed > lapMaxSpeed) {
                 lapMaxSpeed = record.speed;
@@ -1092,7 +1093,8 @@ function createTcxFile(activityData) {
         }
 
         // Set lap-specific values
-        caloriesElem.textContent = Math.round(lapCumulativeCalories);
+        // caloriesElem.textContent = Math.round(lapCumulativeCalories);
+        caloriesElem.textContent = lap.calories;
         appendIfNotNull(lapElem, caloriesElem);
 
         distanceElem.textContent = lapCumulativeDistance;

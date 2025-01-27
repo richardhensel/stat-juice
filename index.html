@@ -88,8 +88,9 @@
         }
 
         .ui-wrapper {
-            display: flex;
-            align-items: center;
+            display: block;
+            flex-direction: column; Stacks children vertically
+            /* align-items: center; */
             margin-bottom: 10px;
         }
 
@@ -141,65 +142,29 @@
 <body>
     <h1 style="font-family: Arial, sans-serif;">Fill gaps in recorded position</h1>
    
-    <!-- <div 
-        id="instructions"
-        style="font-family: Arial, sans-serif;"> 
-        Click the map to fill waypoints from the Start to the End point.<br>
-        Lines are fixed once blue. New waypoints affect the red line only. <br>
-        Click 'Clear Waypoints' to start again at any time. <br>
-        Click 'Use Waypoints' to accept the path you have defined.
-    </div> -->
 
     <div id="content">
-        <!-- Top row -->
-        <!-- <div class="row"> -->
-            <!-- Left Column -->
-            <div id="right-column" class="column">
-                <!-- <h2>Upload two or more activity files to be joined</h2> -->
+
+            <div id="left-column" class="column">
+
                 <div id="ui-container" class="scrollable-div">
-                    <!-- <div id="file-upload" class="ui-wrapper" style="display: none;"></div>
-                    <div id="display-gaps" class="ui-wrapper" style="display: none;"></div>
-                    <div id="display-single-gap" class="ui-wrapper" style="display: none;"></div>
-                    <div id="edit-single-gap" class="ui-wrapper" style="display: none;"></div>
-                    <div id="summary-and-download" class="ui-wrapper" style="display: none;"></div> -->
+
 
 
 
                 </div>
-
-                <!-- <button id="add-upload-button" class="button">+</button> -->
             </div>
 
-
-
             <!-- Right Column -->
-            <div id="left-column" class="column">
+            <div id="right-column" class="column">
 
                 <div id="map"></div>
-                <!-- <h2>Upload two or more activity files to be joined</h2> -->
-                <!-- <div id="graph-container" class="scrollable-div"> -->
-                    <!-- <div id="file-upload" class="ui-wrapper" style="display: none;"></div>
-                    <div id="display-gaps" class="ui-wrapper" style="display: none;"></div>
-                    <div id="display-single-gap" class="ui-wrapper" style="display: none;"></div>
-                    <div id="edit-single-gap" class="ui-wrapper" style="display: none;"></div>
-                    <div id="summary-and-download" class="ui-wrapper" style="display: none;"></div> -->
 
                 <div id="graph-container" class="scrollable-div">
 
-                <!-- <canvas id="hrDistanceGraph" width="400" height="200"></canvas> -->
 
                 </div>
-
-                <!-- <button id="add-upload-button" class="button">+</button> -->
             </div>
-        <!-- </div> -->
-
-        <!-- Bottom row -->
-        <!-- <div class="row"> -->
-
-            <!-- <canvas id="hrDistanceGraph" width="400" height="200"></canvas> -->
-
-        <!-- </div> -->
     </div>
 
 
@@ -412,9 +377,17 @@
 
 
             wrapper.appendChild(fileInput);
+            const fileFormatTextBox = document.createElement('div');
+            fileFormatTextBox.id = 'file-format-text-box';
+            fileFormatTextBox.textContent = `Works for Activity files in .tcx format`;
+            fileFormatTextBox.style.marginLeft = '2px';
+            wrapper.appendChild(fileFormatTextBox);
+
             var buttonUiContainer = document.getElementById('ui-container');
             buttonUiContainer.style.height = "100%";
+
             buttonUiContainer.appendChild(wrapper);
+
 
 
 
