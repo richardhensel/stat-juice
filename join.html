@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stat Juice - Join</title>
+    <link rel="icon" href="statJuiceIcon.png" type="image/png">
     <!-- Include Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
@@ -12,6 +13,30 @@
             width: 100%;
             border: 2px solid #000;
         }
+        /* .banner {
+        background-color: #2c3e50;
+        color: white;
+        padding: 1em 2em;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        }
+
+        .banner h1 {
+        margin: 0;
+        font-size: 1.5em;
+        }
+
+        .nav-links a {
+        color: white;
+        margin-left: 1em;
+        text-decoration: none;
+        font-weight: bold;
+        }
+
+        .nav-links a:hover {
+        text-decoration: underline;
+        } */
         #content {
             display: flex;
             margin-top: 20px;
@@ -77,7 +102,28 @@
     </style>
 </head>
 <body>
-    <h1 style="font-family: Arial, sans-serif;">Join multiple activity files</h1>
+    
+
+    <div style="display: flex; font-family: Arial, sans-serif; margin-bottom: 1em;">
+        <!-- Icon (left, outside the bar) -->
+        <a href="index.html" style="display: flex; align-items: center; text-decoration: none;">
+          <img src="StatJuiceIcon.png" alt="Logo" style="height: 60px;">
+        </a>
+      
+        <!-- Full-width bar to the right of the icon -->
+        <div style="background-color: #bd520b; color: white; height: 60px; flex: 1; display: flex; align-items: center; padding: 0 1em;">
+          <a href="index.html" style="display: flex; align-items: center; text-decoration: none; color: white; margin-right: 1em;">
+            <span style="font-size: 2em; font-weight: bold;">Stat Juice</span>
+          </a>
+          <div style="display: flex; gap: 1em; flex-wrap: wrap;">
+            <a href="fill-gaps.html" style="color: white; text-decoration: none; font-weight: bold;">Fill Gaps</a>
+            <a href="join.html" style="color: white; text-decoration: none; font-weight: bold;">Join Files</a>
+          </div>
+        </div>
+      </div>
+
+    <h1 style="font-family: Arial, sans-serif;">Join Activity Files</h1>
+
     <div id="map"></div>
     <div id="content">
         <!-- Left Column -->
