@@ -810,54 +810,7 @@
                     wrapper.appendChild(buttonWrapper);
                 }
 
-        //         const downloadName = 'activity_juiced.tcx';
-
-        //         // Place the download button.
-        //         var buttonWrapper = document.createElement('div');
-        //         buttonWrapper.id = 'download-button-wrapper';
-        //         buttonWrapper.style.display = 'flex';
-
-        //         buttonWrapper.style.alignItems = "center";
-        //         buttonWrapper.style.backgroundColor= "blue";
-        // /* height: 16px; */
-        //         buttonWrapper.style.width = "50%";
-
-        //         buttonWrapper.style.padding = "8px 16px";
-        //         buttonWrapper.style.margin = "10px 0";
-        //         buttonWrapper.style.border = "none";
-        //         buttonWrapper.style.borderRadius = "4px";
-        //         buttonWrapper.style.color = "white";
-        //         buttonWrapper.style.fontSize = "14px";
-
-        //         var downloadButton = document.createElement('button');
-        //         downloadButton.id = `download-button`;
-        //         downloadButton.style.marginLeft = '2px';
-        //         downloadButton.textContent = `Download`;
-                
-        //         downloadButton.addEventListener("click", () => {
-        //             const tcxContent = createTcxFile(currentActivityData);
-        //             const blob = new Blob([tcxContent], { type: "application/xml" });
-        //             const url = URL.createObjectURL(blob);
-
-        //             const link = document.createElement("a");
-        //             link.href = url;
-        //             link.download = downloadName;
-        //             link.click();
-
-        //             // Cleanup
-        //             URL.revokeObjectURL(url);
-        //         });
-
-        //         buttonWrapper.appendChild(downloadButton);
-
-        //         const downloadTextBox = document.createElement('div');
-        //         downloadTextBox.id = 'download-text-box';
-        //         downloadTextBox.textContent = downloadName;
-        //         downloadTextBox.style.marginLeft = '2px';
-
-        //         buttonWrapper.appendChild(downloadTextBox);
-
-        //         wrapper.appendChild(buttonWrapper);
+      
 
                 
 
@@ -880,44 +833,12 @@
                 document.getElementById('ui-container').appendChild(wrapper);
             }
 
-            // var buttonWrapper = document.createElement('div');
-            // buttonWrapper.id = `accept-changes-button-wrapper`;
-            // buttonWrapper.style.display = 'flex';
-
-            // buttonWrapper.style.alignItems = "center";
-            // buttonWrapper.style.backgroundColor= "green";
-            // /* height: 16px; */
-            // buttonWrapper.style.width = "50%";
-
-            // buttonWrapper.style.padding = "8px 16px";
-            // buttonWrapper.style.margin = "10px 0";
-            // buttonWrapper.style.border = "none";
-            // buttonWrapper.style.borderRadius = "4px";
-            // buttonWrapper.style.color = "white";
-            // buttonWrapper.style.fontSize = "4px";
-
-
-            // var acceptChangesButton = document.createElement('button');
-            // acceptChangesButton.id = `accept-changes-button`;
-            // acceptChangesButton.style.marginLeft = '2px';
-            // acceptChangesButton.textContent = `Accept changes`;
-            
-
-            // acceptChangesButton.addEventListener('click', function () {
-            //     displaySummaryAndDownloadUi();
-            // });
-
-            // buttonWrapper.appendChild(acceptChangesButton);
-
-            // wrapper.appendChild(buttonWrapper);
-
             var cancelButtonWrapper = document.createElement('div');
             cancelButtonWrapper.id = 'cancel-button-wrapper';
             cancelButtonWrapper.style.display = 'flex';
 
             cancelButtonWrapper.style.alignItems = "center";
             cancelButtonWrapper.style.backgroundColor= "red";
-    /* height: 16px; */
             cancelButtonWrapper.style.width = "50%";
 
             cancelButtonWrapper.style.padding = "8px 16px";
@@ -1066,16 +987,6 @@
                         displayEditGapUi(id, false);
                     };
 
-                    // var button2 = L.DomUtil.create('button', '', container);
-                    // button2.innerHTML = 'Clear waypoints';
-                    // button2.style.margin = '5px';
-                    // button2.onclick = function () {
-                    //     clickedCoordinates[id] = [];
-
-                    //     handler.resetDropout(id);
-
-                    //     displayEditGapUi(id, false);
-                    // };
                 }
 
                 return container;
