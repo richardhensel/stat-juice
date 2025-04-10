@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stat Juice - Fill Gaps</title>
-    <link rel="icon" href="StatJuiceIcon.png" type="image/png">
+    <link rel="icon" href="StatJuiceLogo2_black_square.png" type="image/png">
     <!-- Include Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
@@ -171,11 +171,11 @@
     <div style="display: flex; font-family: Arial, sans-serif; margin-bottom: 1em;">
         <!-- Icon (left, outside the bar) -->
         <a href="index.html" style="display: flex; align-items: center; text-decoration: none;">
-          <img src="StatJuiceIcon.png" alt="Logo" style="height: 60px;">
+          <img src="StatJuiceLogo2_black_rectangular.png" alt="Logo" style="height: 60px;">
         </a>
       
         <!-- Full-width bar to the right of the icon -->
-        <div style="background-color: #bd520b; color: white; height: 60px; flex: 1; display: flex; align-items: center; padding: 0 1em;">
+        <div style="background-color: #f98a1b; color: white; height: 60px; flex: 1; display: flex; align-items: center; padding: 0 1em;">
           <a href="index.html" style="display: flex; align-items: center; text-decoration: none; color: white; margin-right: 1em;">
             <span style="font-size: 2em; font-weight: bold;">Stat Juice</span>
           </a>
@@ -232,6 +232,8 @@
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
 
+
+        var inputFileName = null;
 
         var activityDataInput = null;
 
@@ -366,7 +368,7 @@
             fileInput.style.padding = '8px 16px';
             fileInput.style.margin = '10px 0';
             fileInput.style.width = '50%';
-            fileInput.style.backgroundColor = 'blue';
+            fileInput.style.backgroundColor = '#f98a1b';
             fileInput.style.color = 'white';
             fileInput.style.borderRadius = '4px';
 
@@ -380,6 +382,8 @@
                 // Load the file into the dataInput array.
                 const file = event.target.files[0];
                 if (!file) return;
+
+                inputFileName = file.name;
 
                 const reader = new FileReader();
                 reader.onload = function (e) {
@@ -488,6 +492,70 @@
 
             if (dropouts.length > 0) {
 
+                // Place the download button at the top for visibility.
+
+                // Get the filename to use
+                var downloadName = null;
+                const dotIndex = inputFileName.lastIndexOf('.');
+                if (dotIndex !== -1) {
+                    const base = inputFileName.substring(0, dotIndex);
+                    const ext = inputFileName.substring(dotIndex);
+                    downloadName = `${base}_filled${ext}`;
+                } else {
+                    // If no extension
+                    downloadName = `${originalName}_filled`;
+                }
+
+
+                // place the button
+
+                var buttonWrapper = document.createElement('div');
+                buttonWrapper.id = 'download-button-wrapper';
+                buttonWrapper.style.display = 'flex';
+
+                buttonWrapper.style.alignItems = "center";
+                buttonWrapper.style.backgroundColor= "#f98a1b";
+                buttonWrapper.style.width = "50%";
+
+                buttonWrapper.style.padding = "8px 16px";
+                buttonWrapper.style.margin = "10px 0";
+                buttonWrapper.style.border = "none";
+                buttonWrapper.style.borderRadius = "4px";
+                buttonWrapper.style.color = "white";
+                buttonWrapper.style.fontSize = "14px";
+
+                var downloadButton = document.createElement('button');
+                downloadButton.id = `download-button`;
+                downloadButton.style.marginLeft = '2px';
+                downloadButton.textContent = `Save and Download`;
+                
+                downloadButton.addEventListener("click", () => {
+                    const tcxContent = createTcxFile(currentActivityData);
+                    const blob = new Blob([tcxContent], { type: "application/xml" });
+                    const url = URL.createObjectURL(blob);
+
+                    const link = document.createElement("a");
+                    link.href = url;
+                    link.download = downloadName;
+                    link.click();
+
+                    // Cleanup
+                    URL.revokeObjectURL(url);
+                });
+
+                buttonWrapper.appendChild(downloadButton);
+
+                const downloadTextBox = document.createElement('div');
+                downloadTextBox.id = 'download-text-box';
+                downloadTextBox.textContent = downloadName;
+                downloadTextBox.style.marginLeft = '2px';
+
+                buttonWrapper.appendChild(downloadTextBox);
+
+                wrapper.appendChild(buttonWrapper);
+
+
+                // Place the summary text
                 const summaryTextBox = document.createElement('div');
                 summaryTextBox.id = 'download-text-box';
                 summaryTextBox.textContent = `There are ${dropouts.length} gaps in the activity`;
@@ -742,54 +810,54 @@
                     wrapper.appendChild(buttonWrapper);
                 }
 
-                const downloadName = 'activity_juiced.tcx';
+        //         const downloadName = 'activity_juiced.tcx';
 
-                // Place the download button.
-                var buttonWrapper = document.createElement('div');
-                buttonWrapper.id = 'download-button-wrapper';
-                buttonWrapper.style.display = 'flex';
+        //         // Place the download button.
+        //         var buttonWrapper = document.createElement('div');
+        //         buttonWrapper.id = 'download-button-wrapper';
+        //         buttonWrapper.style.display = 'flex';
 
-                buttonWrapper.style.alignItems = "center";
-                buttonWrapper.style.backgroundColor= "blue";
-        /* height: 16px; */
-                buttonWrapper.style.width = "50%";
+        //         buttonWrapper.style.alignItems = "center";
+        //         buttonWrapper.style.backgroundColor= "blue";
+        // /* height: 16px; */
+        //         buttonWrapper.style.width = "50%";
 
-                buttonWrapper.style.padding = "8px 16px";
-                buttonWrapper.style.margin = "10px 0";
-                buttonWrapper.style.border = "none";
-                buttonWrapper.style.borderRadius = "4px";
-                buttonWrapper.style.color = "white";
-                buttonWrapper.style.fontSize = "14px";
+        //         buttonWrapper.style.padding = "8px 16px";
+        //         buttonWrapper.style.margin = "10px 0";
+        //         buttonWrapper.style.border = "none";
+        //         buttonWrapper.style.borderRadius = "4px";
+        //         buttonWrapper.style.color = "white";
+        //         buttonWrapper.style.fontSize = "14px";
 
-                var downloadButton = document.createElement('button');
-                downloadButton.id = `download-button`;
-                downloadButton.style.marginLeft = '2px';
-                downloadButton.textContent = `Download`;
+        //         var downloadButton = document.createElement('button');
+        //         downloadButton.id = `download-button`;
+        //         downloadButton.style.marginLeft = '2px';
+        //         downloadButton.textContent = `Download`;
                 
-                downloadButton.addEventListener("click", () => {
-                    const tcxContent = createTcxFile(currentActivityData);
-                    const blob = new Blob([tcxContent], { type: "application/xml" });
-                    const url = URL.createObjectURL(blob);
+        //         downloadButton.addEventListener("click", () => {
+        //             const tcxContent = createTcxFile(currentActivityData);
+        //             const blob = new Blob([tcxContent], { type: "application/xml" });
+        //             const url = URL.createObjectURL(blob);
 
-                    const link = document.createElement("a");
-                    link.href = url;
-                    link.download = downloadName;
-                    link.click();
+        //             const link = document.createElement("a");
+        //             link.href = url;
+        //             link.download = downloadName;
+        //             link.click();
 
-                    // Cleanup
-                    URL.revokeObjectURL(url);
-                });
+        //             // Cleanup
+        //             URL.revokeObjectURL(url);
+        //         });
 
-                buttonWrapper.appendChild(downloadButton);
+        //         buttonWrapper.appendChild(downloadButton);
 
-                const downloadTextBox = document.createElement('div');
-                downloadTextBox.id = 'download-text-box';
-                downloadTextBox.textContent = downloadName;
-                downloadTextBox.style.marginLeft = '2px';
+        //         const downloadTextBox = document.createElement('div');
+        //         downloadTextBox.id = 'download-text-box';
+        //         downloadTextBox.textContent = downloadName;
+        //         downloadTextBox.style.marginLeft = '2px';
 
-                buttonWrapper.appendChild(downloadTextBox);
+        //         buttonWrapper.appendChild(downloadTextBox);
 
-                wrapper.appendChild(buttonWrapper);
+        //         wrapper.appendChild(buttonWrapper);
 
                 
 

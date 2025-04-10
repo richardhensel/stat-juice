@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stat Juice - Join</title>
-    <link rel="icon" href="statJuiceIcon.png" type="image/png">
+    <link rel="icon" href="StatJuiceLogo2_black_square.png" type="image/png">
     <!-- Include Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
@@ -107,11 +107,11 @@
     <div style="display: flex; font-family: Arial, sans-serif; margin-bottom: 1em;">
         <!-- Icon (left, outside the bar) -->
         <a href="index.html" style="display: flex; align-items: center; text-decoration: none;">
-          <img src="StatJuiceIcon.png" alt="Logo" style="height: 60px;">
+          <img src="StatJuiceLogo2_black_rectangular.png" alt="Logo" style="height: 60px;">
         </a>
       
         <!-- Full-width bar to the right of the icon -->
-        <div style="background-color: #bd520b; color: white; height: 60px; flex: 1; display: flex; align-items: center; padding: 0 1em;">
+        <div style="background-color: #f98a1b; color: white; height: 60px; flex: 1; display: flex; align-items: center; padding: 0 1em;">
           <a href="index.html" style="display: flex; align-items: center; text-decoration: none; color: white; margin-right: 1em;">
             <span style="font-size: 2em; font-weight: bold;">Stat Juice</span>
           </a>
@@ -159,6 +159,8 @@
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
 
+        var inputFileName = null;
+
         const maxUploads = 7;
         // let uploadCounter = 0;
 
@@ -173,6 +175,7 @@
         var outputMapLayer = null;
 
         const outputColor = 'purple';
+        // const outputColor = "#f98a1b"; // not great contrast on the map.
 
         function createUploadField() {
 
@@ -260,7 +263,19 @@
 
         function placeDownloadButton(activityData) {
 
-            const downloadName = 'activity_joined.tcx';
+            // const downloadName = 'activity_joined.tcx';
+
+            // Get the filename to use
+            var downloadName = null;
+            const dotIndex = inputFileName.lastIndexOf('.');
+            if (dotIndex !== -1) {
+                const base = inputFileName.substring(0, dotIndex);
+                const ext = inputFileName.substring(dotIndex);
+                downloadName = `${base}_joined${ext}`;
+            } else {
+                // If no extension
+                downloadName = `${originalName}_joined`;
+            }
 
             const downloadBox = document.getElementById('download-box');
             downloadBox.textContent = '';
@@ -313,6 +328,11 @@
             // Load the file into the dataInput array.
             const file = event.target.files[0];
             if (!file) return;
+
+            if (id == 0)
+            {
+                inputFileName = file.name;
+            }
 
             const reader = new FileReader();
             reader.onload = function (e) {
