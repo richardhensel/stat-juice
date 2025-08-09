@@ -192,7 +192,7 @@ function updateActivitySection(activityData, indices, newPositions) {
     for (let i = 0; i < newPositions.length; i++) {
         const currentIndex = startIndex + 1 + i;
         records[currentIndex].position = [newPositions[i].position.lat, newPositions[i].position.lon];
-        records[currentIndex].distance = newPositions[i].distance;
+        records[currentIndex].incrementalDistance = newPositions[i].incrementalDistance;
     }
 
     // let nextPosition = records[endIndex].position;
@@ -232,7 +232,7 @@ function updateActivitySection(activityData, indices, newPositions) {
     }
 
     // Update the values of the first non-null record after the dropout
-    records[endIndex].distance = newPositions[newPositions.length -1].distance;
+    records[endIndex].incrementalDistance = newPositions[newPositions.length -1].incrementalDistance;
     records[endIndex].velocity = records[endIndex-1].velocity;
 
 
@@ -346,7 +346,7 @@ function updateActivitySection(activityData, indices, newPositions) {
 // Function to calculate total distance covered
 function calculateTotalDistance(records) {
     if (records.length <= 1) return 0;
-    return records.slice(1).reduce((acc, record) => acc + (record.distance || 0), 0);
+    return records.slice(1).reduce((acc, record) => acc + (record.incrementalDistance || 0), 0);
 }
 
 // Function to calculate total time in seconds
@@ -426,19 +426,19 @@ class ActivityDropoutHandler {
 
         const distancePerIncrement = totalRoughPolylineDistance / (numberOfDropoutTrackPoints + 1);
 
-        let runningDistance = 0;
+        let dropoutCumulativeDistance = 0;
         const interpolatedPositions = [];
 
         for (let i = 0; i < numberOfDropoutTrackPoints; i++) {
-            runningDistance += distancePerIncrement;
+            dropoutCumulativeDistance += distancePerIncrement;
 
-            const pointResult = findPointOnPolyline(roughPolyline, runningDistance);
+            const pointResult = findPointOnPolyline(roughPolyline, dropoutCumulativeDistance);
 
             if (pointResult.error) {
                 throw new Error(`Error finding point on polyline: ${pointResult.error}`);
             }
 
-            interpolatedPositions.push({position: {lat:pointResult.lat, lon: pointResult.lon}, distance: distancePerIncrement});
+            interpolatedPositions.push({position: {lat:pointResult.lat, lon: pointResult.lon}, incrementalDistance: distancePerIncrement});
         }
 
         updateActivitySection(this.activity, [startIndex, endIndex], interpolatedPositions);
@@ -455,7 +455,7 @@ class ActivityDropoutHandler {
 
         for (let i = startIndex + 1; i < endIndex; i++) {
             this.activity.records[i].position = originalSection[i - (startIndex + 1)].position;
-            this.activity.records[i].distance = originalSection[i - (startIndex + 1)].distance;
+            this.activity.records[i].incrementalDistance = originalSection[i - (startIndex + 1)].incrementalDistance;
             this.activity.records[i].velocity = originalSection[i - (startIndex + 1)].velocity;
         }
 

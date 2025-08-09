@@ -117,7 +117,8 @@ function processTcxXml(xml) {
                 timestamp: timestamp,
                 position: [lat, lon],
                 altitude: altitude,
-                distance: incrementalDistance,
+                incrementalDistance: incrementalDistance,
+                cumulativeDistance: cumulativeDistance,
                 hr: hr,
                 cadence: cadence,
                 power: power,
@@ -170,6 +171,73 @@ function processTcxXml(xml) {
             creator: creator,
             author: author
         }
+    };
+}
+
+function calculateSummaryStats(activityData) {
+    if (!activityData || !activityData.records || !Array.isArray(activityData.records)) {
+        throw new Error("Invalid activityData: missing or invalid records array");
+    }
+
+    const records = activityData.records;
+    const laps = activityData.laps || [];
+
+    if (records.length === 0) {
+        return {
+            totalTime: 0,
+            totalDistance: 0,
+            averageSpeed: 0,
+            averagePower: null,
+            averageHR: null,
+            totalElevationGained: 0,
+            totalCalories: 0
+        };
+    }
+
+    // Total time from sum of all lap durations
+    const totalTime = laps.reduce((sum, lap) => sum + (lap.duration || 0), 0);
+
+    // Total distance from sum of incremental distances
+    const totalDistance = records.reduce((sum, record) => {
+        return sum + (record.incrementalDistance || 0);
+    }, 0);
+
+    // Average speed (total distance / total time)
+    const averageSpeed = totalTime > 0 ? totalDistance / totalTime : 0;
+
+    // Average power from non-null trackpoint values
+    const powerValues = records.map(r => r.power).filter(p => p != null && p > 0);
+    const averagePower = powerValues.length > 0 ? 
+        Math.round(powerValues.reduce((a, b) => a + b, 0) / powerValues.length) : null;
+
+    // Average HR from non-null trackpoint values
+    const hrValues = records.map(r => r.hr).filter(hr => hr != null && hr > 0);
+    const averageHR = hrValues.length > 0 ? 
+        Math.round(hrValues.reduce((a, b) => a + b, 0) / hrValues.length) : null;
+
+    // Total elevation gained
+    const altValues = records.map(r => r.altitude).filter(alt => alt != null);
+    let totalElevationGained = 0;
+    if (altValues.length > 1) {
+        for (let i = 1; i < altValues.length; i++) {
+            const gain = altValues[i] - altValues[i - 1];
+            if (gain > 0) {
+                totalElevationGained += gain;
+            }
+        }
+    }
+
+    // Total calories from lap calories
+    const totalCalories = laps.reduce((sum, lap) => sum + (lap.calories || 0), 0);
+
+    return {
+        totalTime: Math.round(totalTime),
+        totalDistance: Math.round(totalDistance * 100) / 100,
+        averageSpeed: Math.round(averageSpeed * 100) / 100,
+        averagePower: averagePower,
+        averageHR: averageHR,
+        totalElevationGained: Math.round(totalElevationGained),
+        totalCalories: totalCalories
     };
 }
 
@@ -348,9 +416,9 @@ function createTcxFile(activityData) {
             altitudeElem.textContent = record.altitude;
             appendIfNotNull(trackpointElem, altitudeElem);
 
-            if (record.distance !== null) {
-                totalCumulativeDistance += record.distance;
-                lapCumulativeDistance += record.distance;
+            if (record.incrementalDistance !== null) {
+                totalCumulativeDistance += record.incrementalDistance;
+                lapCumulativeDistance += record.incrementalDistance;
             }
 
             if (record.speed !== null && record.speed > lapMaxSpeed) {

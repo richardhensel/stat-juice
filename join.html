@@ -141,6 +141,7 @@
                     <div id="download-box" class="download-box"></div>
                 </div>
             </div>
+            <div id="summary-stats-wrapper"></div>
             
             <!-- <button id="add-upload-button" class="button">+</button> -->
         </div>
@@ -171,6 +172,8 @@
 
         // List to store the data from uploaded files.
         var dataInput = [];
+
+        var dataOutput = null;
 
         var outputMapLayer = null;
 
@@ -261,7 +264,7 @@
             }
         }
 
-        function placeDownloadButton(activityData) {
+        function placeDownloadButton() {
 
             // const downloadName = 'activity_joined.tcx';
 
@@ -289,7 +292,7 @@
             downloadButton.className = 'button-download';
 
             downloadButton.addEventListener("click", () => {
-                const tcxContent = createTcxFile(activityData);
+                const tcxContent = createTcxFile(dataOutput);
                 const blob = new Blob([tcxContent], { type: "application/xml" });
                 const url = URL.createObjectURL(blob);
 
@@ -321,6 +324,58 @@
 
             const downloadBox = document.getElementById('download-box');
             downloadBox.textContent = 'Upload a file into each input box';
+        }
+
+        function updateSummaryStatsDisplay() {
+
+            function stringFormatSummaryStats(stats) {
+                return `TotalTime: ${stats.totalTime}s, TotalDistance: ${stats.totalDistance/1000}km, AverageSpeed: ${stats.averageSpeed*3.6}km/h, ElevationGain: ${stats.totalElevationGained}m, AverageHR: ${stats.averageHR}bpm, AveragePower: ${stats.averagePower}W, TotalCalories: ${stats.totalCalories}kcal`;
+            }
+
+            const summaryStatsWrapper = document.getElementById('summary-stats-wrapper');
+
+            var summaryStatsBox = document.getElementById('summary-stats-box');
+            if (summaryStatsBox) summaryStatsBox.remove();
+
+            summaryStatsBox = document.createElement('div');
+            summaryStatsBox.id = 'summary-stats-box';
+
+            for (let i = 0; i < dataInput.length; i++) {
+
+                console.log(dataInput[i]);
+
+                if (dataInput[i] == null) {
+                    continue; // Skip if no data for this input.
+                }
+
+                console.log('calculating summary stats for input', i);
+
+                var summarySats = calculateSummaryStats(dataInput[i]);
+
+                const inputStatsTextBox = document.createElement('div');
+                inputStatsTextBox.id = `input-stats-text-box-${i}`;
+                inputStatsTextBox.innerHTML = `Input ${i+1}: ${stringFormatSummaryStats(summarySats)}`;
+                inputStatsTextBox.style.marginLeft = '2px';
+                inputStatsTextBox.style.color = colors[i]; // Cycle through the colours if more uploads than colours.
+
+                summaryStatsBox.appendChild(inputStatsTextBox);
+            }
+
+            if (dataOutput != null) {
+                console.log('calculating summary stats for output');
+                var summarySats = calculateSummaryStats(dataOutput);
+                const outputStatsTextBox = document.createElement('div');
+                outputStatsTextBox.id = `output-stats-text-box`;
+                outputStatsTextBox.innerHTML = `Output: ${stringFormatSummaryStats(summarySats)}`;
+                outputStatsTextBox.style.marginLeft = '2px';
+                outputStatsTextBox.style.color = 'purple';
+
+                summaryStatsBox.appendChild(outputStatsTextBox);
+            }
+
+            summaryStatsWrapper.appendChild(summaryStatsBox);
+
+
         }
 
         function handleFileUpload(event, id) {
@@ -371,24 +426,31 @@
             document.querySelector(`#upload-wrapper-${id} input`).value = '';
             document.querySelector(`#upload-wrapper-${id} .button-danger`).style.display = 'none';
 
-
-
             checkAndMaybeClearOutputData();
         }
 
         function checkAndMaybeAppendData() {
+            // Check if all dataInput elements are not null.
             if (dataInput.every(element => element !== null)) {
                 const appendedData = appendActivitiesSimple(dataInput);
                 outputMapLayer = plotPolylineOnMap(appendedData, map, outputMapLayer, outputColor);
 
-                placeDownloadButton(appendedData);
+                dataOutput = appendedData;
+
+                placeDownloadButton();
+
             }
+
+            // Show summary stats.
+            updateSummaryStatsDisplay();
         }
 
         function checkAndMaybeClearOutputData() {
             if (!dataInput.every(element => element !== null)) {
                 clearPolylineFromMap(map, outputMapLayer);
+                dataOutput = null;
                 removeDownloadButton();
+                updateSummaryStatsDisplay();
             }
         }
 

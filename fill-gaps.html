@@ -205,7 +205,9 @@
 
                 <div id="map"></div>
 
-                <div id="graph-container" class="scrollable-div">
+                <div id="summary-stats-wrapper"></div>
+
+                <!-- <div id="graph-container" class="scrollable-div"> -->
 
 
                 </div>
@@ -236,6 +238,7 @@
         var inputFileName = null;
 
         var activityDataInput = null;
+        var activityDataOutput = null;
 
         // Array to store clicked coordinates
         var clickedCoordinates = [[]];
@@ -352,9 +355,63 @@
 
         }
 
+        function updateSummaryStatsDisplay() {
+
+            function stringFormatSummaryStats(stats) {
+                return `TotalTime: ${stats.totalTime}s, TotalDistance: ${stats.totalDistance/1000}km, AverageSpeed: ${stats.averageSpeed*3.6}km/h, ElevationGain: ${stats.totalElevationGained}m, AverageHR: ${stats.averageHR}bpm, AveragePower: ${stats.averagePower}W, TotalCalories: ${stats.totalCalories}kcal`;
+            }
+
+            const summaryStatsWrapper = document.getElementById('summary-stats-wrapper');
+
+            var summaryStatsBox = document.getElementById('summary-stats-box');
+            if (summaryStatsBox) summaryStatsBox.remove();
+
+            summaryStatsBox = document.createElement('div');
+            summaryStatsBox.id = 'summary-stats-box';
+
+            
+
+            if (activityDataInput != null) {
+
+                var summarySats = calculateSummaryStats(activityDataInput);
+
+                const inputStatsTextBox = document.createElement('div');
+                inputStatsTextBox.id = `input-stats-text-box`;
+                inputStatsTextBox.innerHTML = `Input: ${stringFormatSummaryStats(summarySats)}`;
+                inputStatsTextBox.style.marginLeft = '2px';
+                inputStatsTextBox.style.color = 'blue'; 
+
+                summaryStatsBox.appendChild(inputStatsTextBox);
+            }
+
+            if (activityDataOutput != null) {
+
+                var summarySats = calculateSummaryStats(activityDataOutput);
+
+                const outputStatsTextBox = document.createElement('div');
+                outputStatsTextBox.id = `output-stats-text-box`;
+                outputStatsTextBox.innerHTML = `Output: ${stringFormatSummaryStats(summarySats)}`;
+                outputStatsTextBox.style.marginLeft = '2px';
+                outputStatsTextBox.style.color = 'orange';
+
+                summaryStatsBox.appendChild(outputStatsTextBox);
+            }
+
+            summaryStatsWrapper.appendChild(summaryStatsBox);
+
+
+            }
+
         function displayFileUploadUi() {
 
+            activityDataInput = null;
+            activityDataOutput = null;
+
+
+
             clearAllUi();
+
+            
 
             const wrapper = document.createElement('div');
             wrapper.id = 'file-upload';
@@ -439,7 +496,7 @@
 
 
 
-
+            updateSummaryStatsDisplay();
 
             // Upload box
             // When file is loaded, plot the original activity in blue
@@ -461,6 +518,7 @@
             // wrapper.className = 'ui-wrapper';
 
             const currentActivityData = handler.getRemappedData();
+            activityDataOutput = currentActivityData;
 
             // plotPolylineFromFullActivity(currentActivityData, fullActivityPlotLayers, map, 'blue');
 
@@ -469,25 +527,26 @@
 
             // Plot HR vs Distance graph
             // Create the canvas element
-            const hrDistanceChartCanvas = document.createElement('canvas');
-            hrDistanceChartCanvas.id = 'hr-distance-graph';
-            hrDistanceChartCanvas.width = 400;
-            hrDistanceChartCanvas.height = 100;
-            hrDistanceChartCanvas.style.width = "100%";
-            hrDistanceChartCanvas.style.height = 20;
-            document.getElementById('graph-container').appendChild(hrDistanceChartCanvas);
-            hrDistanceChart = plotHrDistanceChart(currentActivityData, hrDistanceChartCanvas, hrDistanceChart, 'red');
+            // const hrDistanceChartCanvas = document.createElement('canvas');
+            // hrDistanceChartCanvas.id = 'hr-distance-graph';
+            // hrDistanceChartCanvas.width = 400;
+            // hrDistanceChartCanvas.height = 100;
+            // hrDistanceChartCanvas.style.width = "100%";
+            // hrDistanceChartCanvas.style.height = 20;
+            // document.getElementById('graph-container').appendChild(hrDistanceChartCanvas);
+            // hrDistanceChart = plotHrDistanceChart(currentActivityData, hrDistanceChartCanvas, hrDistanceChart, 'red');
 
-            const distanceTimeChartCanvas = document.createElement('canvas');
-            distanceTimeChartCanvas.id = 'distance-time-graph';
-            distanceTimeChartCanvas.width = 400;
-            distanceTimeChartCanvas.height = 100;
-            distanceTimeChartCanvas.style.width = "100%";
-            distanceTimeChartCanvas.style.height = 20;
-            document.getElementById('graph-container').appendChild(distanceTimeChartCanvas);
+            // const distanceTimeChartCanvas = document.createElement('canvas');
+            // distanceTimeChartCanvas.id = 'distance-time-graph';
+            // distanceTimeChartCanvas.width = 400;
+            // distanceTimeChartCanvas.height = 100;
+            // distanceTimeChartCanvas.style.width = "100%";
+            // distanceTimeChartCanvas.style.height = 20;
+            // document.getElementById('graph-container').appendChild(distanceTimeChartCanvas);
 
-            distanceTimeChart = plotdistanceTimeChart(currentActivityData, distanceTimeChartCanvas, distanceTimeChart, 'blue');
+            // distanceTimeChart = plotdistanceTimeChart(currentActivityData, distanceTimeChartCanvas, distanceTimeChart, 'blue');
 
+            updateSummaryStatsDisplay();
 
 
             if (dropouts.length > 0) {
