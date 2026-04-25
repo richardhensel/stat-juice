@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Stat Juice Browser Tests</title>
+    <link rel="stylesheet" href="https://unpkg.com/mocha@11/mocha.css" />
+  </head>
+  <body>
+    <h1>Stat Juice Browser Tests</h1>
+    <div id="status">RUNNING</div>
+    <div id="mocha"></div>
+
+    <script src="https://unpkg.com/chai@4/chai.js"></script>
+    <script src="https://unpkg.com/mocha@11/mocha.js"></script>
+    <script>
+      mocha.setup("bdd");
+      mocha.checkLeaks();
+      window.expect = chai.expect;
+    </script>
+
+    <script src="../scripts/geometry_utils.js"></script>
+    <script src="../scripts/tcx_utils.js"></script>
+    <script src="./geometry_utils.test.js"></script>
+    <script src="./tcx_utils.test.js"></script>
+    <script src="./bootstrap.js"></script>
+  </body>
+</html>
