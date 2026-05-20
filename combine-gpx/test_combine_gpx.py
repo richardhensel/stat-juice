@@ -142,6 +142,33 @@ class CombineGpxTests(unittest.TestCase):
             {"lat": "0.0000000", "lon": lon, "time": "2026-01-01T00:00:11Z", "extensions": donor_extensions},
         ]
 
+    @staticmethod
+    def base_points_with_late_finish() -> list[dict[str, object]]:
+        return [
+            {"lat": "0.0000000", "lon": "0.0000000", "time": "2026-01-01T00:00:00Z"},
+            {"lat": "0.0000000", "lon": "0.0000000", "time": "2026-01-01T00:00:02Z"},
+            {"lat": "0.0000000", "lon": "0.0000000", "time": "2026-01-01T00:00:30Z"},
+            {"lat": "0.0000000", "lon": "0.0000000", "time": "2026-01-01T00:00:32Z"},
+        ]
+
+    @staticmethod
+    def split_donor_points() -> list[dict[str, object]]:
+        donor_extensions = """
+    <extensions>
+     <power>250</power>
+     <gpxtpx:TrackPointExtension>
+      <gpxtpx:atemp>17</gpxtpx:atemp>
+      <gpxtpx:hr>140</gpxtpx:hr>
+      <gpxtpx:cad>90</gpxtpx:cad>
+     </gpxtpx:TrackPointExtension>
+    </extensions>"""
+        return [
+            {"lat": "0.0000000", "lon": "0.0000100", "time": "2026-01-01T00:00:10Z", "extensions": donor_extensions},
+            {"lat": "0.0000000", "lon": "0.0000100", "time": "2026-01-01T00:00:11Z", "extensions": donor_extensions},
+            {"lat": "0.0000000", "lon": "0.0010000", "time": "2026-01-01T00:00:20Z", "extensions": donor_extensions},
+            {"lat": "0.0000000", "lon": "0.0010000", "time": "2026-01-01T00:00:21Z", "extensions": donor_extensions},
+        ]
+
     def test_near_donor_block_is_selected_by_default(self) -> None:
         completed, output_path = self.run_script(
             base_points=self.base_points(),
@@ -149,7 +176,13 @@ class CombineGpxTests(unittest.TestCase):
         )
 
         self.assertIn("Selected 6 trackpoint(s): 4 base, 2 donor", completed.stdout)
+        self.assertIn("Output start: 2026-01-01T00:00:00Z @ 0.0000000, 0.0000000", completed.stdout)
+        self.assertIn("Output end: 2026-01-01T00:00:22Z @ 0.0000000, 0.0000000", completed.stdout)
         self.assertIn("Donor proximity check: evaluated 1 donor block(s), skipped 0", completed.stdout)
+        self.assertIn("Block 5: 2026-01-01T00:00:09Z to 2026-01-01T00:00:11Z", completed.stdout)
+        self.assertIn("Availability: base=no, donor=yes", completed.stdout)
+        self.assertIn("Chosen source: donor", completed.stdout)
+        self.assertIn("passed the proximity check", completed.stdout)
         self.assertEqual(
             output_trackpoint_times(output_path),
             [
@@ -176,7 +209,11 @@ class CombineGpxTests(unittest.TestCase):
         )
 
         self.assertIn("Selected 4 trackpoint(s): 4 base, 0 donor", completed.stdout)
+        self.assertIn("Output start: 2026-01-01T00:00:00Z @ 0.0000000, 0.0000000", completed.stdout)
+        self.assertIn("Output end: 2026-01-01T00:00:22Z @ 0.0000000, 0.0000000", completed.stdout)
         self.assertIn("Donor proximity check: evaluated 1 donor block(s), skipped 1", completed.stdout)
+        self.assertIn("Chosen source: none", completed.stdout)
+        self.assertIn("proximity rule failed", completed.stdout)
         self.assertEqual(
             output_trackpoint_times(output_path),
             [
@@ -196,6 +233,7 @@ class CombineGpxTests(unittest.TestCase):
 
         self.assertIn("Selected 6 trackpoint(s): 4 base, 2 donor", completed.stdout)
         self.assertIn("Donor proximity check: evaluated 1 donor block(s), skipped 0", completed.stdout)
+        self.assertIn("passed the proximity check", completed.stdout)
         self.assertIn("2026-01-01T00:00:10Z", output_trackpoint_times(output_path))
 
     def test_far_donor_block_can_bypass_proximity_check(self) -> None:
@@ -207,7 +245,32 @@ class CombineGpxTests(unittest.TestCase):
 
         self.assertIn("Selected 6 trackpoint(s): 4 base, 2 donor", completed.stdout)
         self.assertNotIn("Donor proximity check:", completed.stdout)
+        self.assertIn("proximity check was disabled", completed.stdout)
         self.assertIn("2026-01-01T00:00:10Z", output_trackpoint_times(output_path))
+
+    def test_second_donor_block_continues_without_rechecking_proximity(self) -> None:
+        completed, output_path = self.run_script(
+            base_points=self.base_points_with_late_finish(),
+            donor_points=self.split_donor_points(),
+        )
+
+        self.assertIn("Selected 8 trackpoint(s): 4 base, 4 donor", completed.stdout)
+        self.assertIn("Donor proximity check: evaluated 1 donor block(s), skipped 0", completed.stdout)
+        self.assertIn("base-to-donor transition passed the proximity check", completed.stdout)
+        self.assertIn("continuing through donor blocks, so the proximity check was not re-applied", completed.stdout)
+        self.assertEqual(
+            output_trackpoint_times(output_path),
+            [
+                "2026-01-01T00:00:00Z",
+                "2026-01-01T00:00:02Z",
+                "2026-01-01T00:00:10Z",
+                "2026-01-01T00:00:11Z",
+                "2026-01-01T00:00:20Z",
+                "2026-01-01T00:00:21Z",
+                "2026-01-01T00:00:30Z",
+                "2026-01-01T00:00:32Z",
+            ],
+        )
 
 
 if __name__ == "__main__":

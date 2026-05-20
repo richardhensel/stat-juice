@@ -20,6 +20,8 @@ xml.etree.ElementTree
 
 The output should be a GPX 1.1 file with one track and one track segment containing the selected points in chronological order.
 
+The script should also emit human-readable reporting to standard output describing the overall result and the per-block merge decisions.
+
 ## Command-line Interface
 
 Only the two input file groups should be required:
@@ -112,8 +114,8 @@ parser.add_argument(
 parser.add_argument(
     "--donor-switch-radius-metres",
     type=float,
-    default=10.0,
-    help="Maximum distance from the last base point to enter a donor block; default: 10 metres",
+    default=100.0,
+    help="Maximum distance from the last base point to enter a donor block; default: 100 metres",
 )
 
 parser.add_argument(
@@ -160,9 +162,31 @@ base coverage present: yes or no
 donor coverage present: yes or no
 base points inside the block
 donor points inside the block
+selected source: base, donor or none
+decision reason
+optional proximity check distance
 ```
 
 The merge decision should be made per block, not per point.
+
+The merge loop should also track the most recent selected non-empty source:
+
+```text
+last selected source: base, donor, or none at startup
+```
+
+This state is needed so the donor proximity rule is applied only on a base-to-donor transition, and not when continuing through later donor blocks without an intervening selected base block.
+
+The implementation should also be able to derive:
+
+```text
+output start location
+output end location
+block start location
+block end location
+```
+
+Locations should come from the relevant trackpoints where possible, with fallback to adjacent trackpoints when a block contains no direct points.
 
 ## XML Namespace Handling
 
@@ -340,6 +364,18 @@ Implement helpers for:
 
 The standard library is sufficient here; a simple haversine implementation is adequate.
 
+## Reporting Helpers
+
+Implement helpers for:
+
+- Extracting latitude/longitude from a trackpoint.
+- Formatting a human-readable location string.
+- Finding the first and last selected output points.
+- Determining a start and end location for each block from points in or adjacent to that block.
+- Formatting block decision summaries.
+
+The reporting should include both summary output for the final combined GPX and a line-by-line explanation of each block decision.
+
 ## Trackpoint Selection Algorithm
 
 Recommended algorithm:
@@ -358,13 +394,18 @@ Recommended algorithm:
 12. For each block:
     - If base coverage exists in the block, select base points from that block.
     - Otherwise, if donor coverage exists in the block, treat the donor points in that block as a candidate donor block.
-    - If donor block entry proximity checking is enabled:
+    - Keep track of the most recent selected non-empty source.
+    - If donor block entry proximity checking is enabled and the most recent selected non-empty source is `base`:
       compare the first donor point in the block against the most recent base point before the block.
+    - If the most recent selected non-empty source is `donor`, do not re-apply the proximity rule for the next donor block unless a selected base block has occurred in between.
     - If the donor block passes the proximity rule, select donor points from that block.
     - If the donor block fails the proximity rule, select nothing from that block.
+    - Record the chosen source and the reason for the decision.
 13. Deduplicate selected points by exact timestamp.
 14. Sort selected points by timestamp.
 15. Write the output GPX.
+16. Report output start and end time/location.
+17. Report each block's start and end time/location, source availability, chosen source, and decision reason.
 
 Base points always beat donor points. Earlier files listed on the command line beat later files within the same source type.
 
@@ -522,6 +563,29 @@ otherwise omit
 
 Use `ET.indent()` where available to produce readable XML.
 
+## Reporting Output
+
+After the output GPX has been written, print a human-readable report.
+
+The final summary should include:
+
+- Output file path.
+- Selected base and donor point counts.
+- Output start time and location.
+- Output end time and location.
+
+Then print one section or line per block including:
+
+- Block index.
+- Block start time and end time.
+- Block start location and end location when available.
+- Base availability.
+- Donor availability.
+- Chosen source.
+- Decision reason.
+
+If no source is chosen for a block, the report should explicitly say why.
+
 ## Main Pseudocode
 
 ```python
@@ -633,6 +697,9 @@ write_gpx(
     output_name=args.output_name,
     donor_metadata_mode=args.donor_metadata,
 )
+
+report_output_summary(selected)
+report_blocks(blocks)
 ```
 
 ## Validation and Error Handling
@@ -686,6 +753,8 @@ The first version should implement:
 - Default-enabled donor block entry proximity checking.
 - Configurable donor switch radius in metres.
 - Command-line option to disable donor block proximity checking.
+- Human-readable output summary with final start/end times and locations.
+- Human-readable per-block reporting with source availability and decision reasons.
 - Command-line order priority.
 - Exact timestamp deduplication.
 - Base points copied exactly.

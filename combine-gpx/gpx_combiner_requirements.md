@@ -30,6 +30,7 @@ python3 combine_gpx.py \
 The script must produce:
 
 - One combined GPX file.
+- Human-readable reporting describing what the script did.
 
 The default output path should be:
 
@@ -43,6 +44,43 @@ The output should contain relevant metadata, including:
 - Generation time in metadata.
 - A track name.
 - A track type where one can reasonably be inferred from the input files.
+
+## Reporting Requirements
+
+The script must provide human-readable output describing the result of the merge process.
+
+This reporting may be written to standard output.
+
+At minimum, the script must report summary information for the final output:
+
+- Output start time.
+- Output end time.
+- Output start location.
+- Output end location.
+
+Locations should be reported using latitude and longitude from the selected output trackpoints.
+
+The script must also report information for each constructed block.
+
+For each block, the script must report:
+
+- Block start time.
+- Block end time.
+- Block start location, where one can be determined from trackpoints in or adjacent to that block.
+- Block end location, where one can be determined from trackpoints in or adjacent to that block.
+- Whether base data is available in that block.
+- Whether donor data is available in that block.
+- Which source was selected for that block: base, donor, or none.
+- Why that source was selected.
+
+If no source was selected for a block, the script must report why no source was chosen.
+
+Examples of reasons include:
+
+- Base coverage exists in the block, so base data was preferred.
+- Donor data was used because base coverage was absent and donor data was eligible.
+- Donor data was rejected because the donor block entry proximity rule failed.
+- No source was selected because neither base nor donor data was available in the block.
 
 ## Output Time Bounds
 
@@ -129,13 +167,16 @@ The combined output must follow these rules:
 1. Include only trackpoints inside the configured output time bounds.
 2. For each block, if base coverage exists in that block, use base data for that block.
 3. A donor block is only eligible if base coverage does not exist in that block.
-4. When the donor block entry rule is enabled, a donor block may only be used if the first donor trackpoint in that block is within the configured radius of the most recent base trackpoint before that block in time.
-5. If a donor block fails the donor block entry rule, that donor block must be skipped entirely.
-6. If a block has neither eligible base data nor eligible donor data, output no trackpoints for that block.
-7. Base files always have priority over donor files.
-8. If multiple base files contribute trackpoints in the same block, earlier files listed on the command line have priority for duplicate timestamps.
-9. If multiple donor files contribute trackpoints in the same block, earlier files listed on the command line have priority.
-10. Exact duplicate timestamps should be deduplicated according to priority.
+4. When the donor block entry rule is enabled, a donor block may only be used if its selection would switch the output from base data to donor data and the first donor trackpoint in that block is within the configured radius of the most recent base trackpoint before that block in time.
+5. The donor block entry rule is not required when continuing from one donor block into another donor block with no intervening selected base block.
+6. If a donor block fails the donor block entry rule when switching from base to donor, that donor block must be skipped entirely.
+7. If a block has neither eligible base data nor eligible donor data, output no trackpoints for that block.
+8. Base files always have priority over donor files.
+9. If multiple base files contribute trackpoints in the same block, earlier files listed on the command line have priority for duplicate timestamps.
+10. If multiple donor files contribute trackpoints in the same block, earlier files listed on the command line have priority.
+11. Exact duplicate timestamps should be deduplicated according to priority.
+
+These merge decisions must be reflected in the reporting output for each block.
 
 ## Donor Block Entry Rules
 
@@ -145,15 +186,17 @@ By default, this check is enabled.
 
 When enabled:
 
-- A donor block may only be used if its first donor trackpoint is within a configurable radius of the most recent base trackpoint before that donor block in time.
+- A donor block may only be checked against this rule when its selection would switch the output from base data to donor data.
+- If the output is already continuing through donor blocks, this rule does not need to be re-applied for each subsequent donor block.
+- When the rule does apply, a donor block may only be used if its first donor trackpoint is within a configurable radius of the most recent base trackpoint before that donor block in time.
 - Distance should be calculated from latitude/longitude in metres.
-- If the first donor trackpoint in a candidate donor block is outside this radius, that donor block must be skipped entirely.
+- If the first donor trackpoint in a candidate donor block is outside this radius during a base-to-donor transition, that donor block must be skipped entirely.
 - If there is no preceding base trackpoint to compare against, this proximity check should not block donor usage.
 
 Default:
 
 ```text
-donor switch radius: 10 metres
+donor switch radius: 100 metres
 donor switch proximity check: enabled
 ```
 
@@ -165,7 +208,7 @@ The command line should allow:
 Example default:
 
 ```text
---donor-switch-radius-metres 10
+--donor-switch-radius-metres 100
 ```
 
 ## Donor Metadata Requirements

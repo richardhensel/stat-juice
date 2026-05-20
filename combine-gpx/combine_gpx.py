@@ -129,6 +129,9 @@ class MergeBlock:
     has_donor_coverage: bool
     base_points: list[TrackPoint] = field(default_factory=list)
     donor_points: list[TrackPoint] = field(default_factory=list)
+    selected_source: str = "none"
+    decision_reason: str = ""
+    proximity_distance_metres: float | None = None
 
 
 def parse_gpx_file(path: str, source_kind: str, priority: int) -> ParsedGpxFile:
@@ -495,6 +498,118 @@ def find_last_base_point_before_time(
     return base_points[idx]
 
 
+def find_last_point_at_or_before_time(
+    points: list[TrackPoint],
+    t: datetime,
+) -> TrackPoint | None:
+    if not points:
+        return None
+
+    point_times = [point.time for point in points]
+    idx = bisect_left(point_times, t)
+    if idx < len(points) and points[idx].time == t:
+        return points[idx]
+    idx -= 1
+    if idx < 0:
+        return None
+    return points[idx]
+
+
+def find_first_point_at_or_after_time(
+    points: list[TrackPoint],
+    t: datetime,
+) -> TrackPoint | None:
+    if not points:
+        return None
+
+    point_times = [point.time for point in points]
+    idx = bisect_left(point_times, t)
+    if idx >= len(points):
+        return None
+    return points[idx]
+
+
+def format_location(point: TrackPoint | None) -> str:
+    if point is None:
+        return "unknown"
+
+    try:
+        lat, lon = trkpt_lat_lon(point)
+    except ValueError:
+        return "unknown"
+    return f"{lat:.7f}, {lon:.7f}"
+
+
+def block_points_in_time_order(block: MergeBlock) -> list[TrackPoint]:
+    return sorted(block.base_points + block.donor_points, key=point_sort_key)
+
+
+def block_start_reference_point(
+    block: MergeBlock,
+    all_points: list[TrackPoint],
+) -> TrackPoint | None:
+    block_points = block_points_in_time_order(block)
+    if block_points:
+        return block_points[0]
+    return find_last_point_at_or_before_time(all_points, block.start) or find_first_point_at_or_after_time(
+        all_points,
+        block.start,
+    )
+
+
+def block_end_reference_point(
+    block: MergeBlock,
+    all_points: list[TrackPoint],
+) -> TrackPoint | None:
+    block_points = block_points_in_time_order(block)
+    if block_points:
+        return block_points[-1]
+    return find_first_point_at_or_after_time(all_points, block.end) or find_last_point_at_or_before_time(
+        all_points,
+        block.end,
+    )
+
+
+def report_output_summary(
+    output_path: str,
+    selected: list[TrackPoint],
+    base_count: int,
+    donor_count: int,
+) -> None:
+    print(f"Wrote {output_path}")
+    print(f"Selected {len(selected)} trackpoint(s): {base_count} base, {donor_count} donor")
+    if not selected:
+        print("Output start: none")
+        print("Output end: none")
+        return
+
+    start_point = selected[0]
+    end_point = selected[-1]
+    print(f"Output start: {format_time(start_point.time)} @ {format_location(start_point)}")
+    print(f"Output end: {format_time(end_point.time)} @ {format_location(end_point)}")
+
+
+def report_blocks(blocks: list[MergeBlock], all_points: list[TrackPoint]) -> None:
+    for idx, block in enumerate(blocks, start=1):
+        start_location = format_location(block_start_reference_point(block, all_points))
+        end_location = format_location(block_end_reference_point(block, all_points))
+        base_available = "yes" if block.has_base_coverage else "no"
+        donor_available = "yes" if block.has_donor_coverage else "no"
+
+        print(
+            f"Block {idx}: {format_time(block.start)} to {format_time(block.end)}"
+            f" | start {start_location}"
+            f" | end {end_location}"
+        )
+        print(f"  Availability: base={base_available}, donor={donor_available}")
+        print(f"  Chosen source: {block.selected_source}")
+        print(f"  Reason: {block.decision_reason}")
+
+
+def donor_transition_requires_proximity_check(last_selected_source: str | None) -> bool:
+    return last_selected_source == "base"
+
+
 def point_priority_tuple(point: TrackPoint) -> tuple[int, int]:
     source_rank = 0 if point.source_kind == "base" else 1
     return (source_rank, point.file_priority)
@@ -681,10 +796,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--donor-switch-radius-metres",
         type=float,
-        default=10.0,
+        default=100.0,
         help=(
             "Maximum distance from the most recent base point to enter a donor block; "
-            "default: 10 metres"
+            "default: 100 metres"
         ),
     )
     parser.add_argument(
@@ -780,29 +895,98 @@ def main(argv: list[str] | None = None) -> int:
     selected: list[TrackPoint] = []
     skipped_donor_blocks = 0
     proximity_checked_blocks = 0
+    last_selected_source: str | None = None
 
     for block in blocks:
         if block.has_base_coverage:
+            block.selected_source = "base"
+            if block.base_points:
+                block.decision_reason = "Base coverage exists in the block, so base data was preferred."
+            else:
+                block.decision_reason = (
+                    "Base coverage exists in the block, so base data was preferred, "
+                    "but no base trackpoints fall inside the block."
+                )
             selected.extend(block.base_points)
+            last_selected_source = "base"
             continue
 
-        if not block.has_donor_coverage or not block.donor_points:
+        if not block.has_donor_coverage:
+            block.selected_source = "none"
+            block.decision_reason = (
+                "No source was selected because neither base nor donor data was available in the block."
+            )
             continue
 
-        if not args.no_donor_switch_proximity_check:
+        if not block.donor_points:
+            block.selected_source = "none"
+            block.decision_reason = (
+                "No source was selected because donor coverage exists, but no donor trackpoints "
+                "fall inside the block."
+            )
+            continue
+
+        if (
+            not args.no_donor_switch_proximity_check
+            and donor_transition_requires_proximity_check(last_selected_source)
+        ):
             proximity_checked_blocks += 1
             last_base_point = find_last_base_point_before_time(base_points, block.start)
             if last_base_point is not None:
                 try:
                     distance_metres = haversine_metres(last_base_point, block.donor_points[0])
+                    block.proximity_distance_metres = distance_metres
                 except ValueError:
                     distance_metres = float("inf")
+                    block.proximity_distance_metres = None
 
                 if distance_metres > args.donor_switch_radius_metres:
                     skipped_donor_blocks += 1
+                    block.selected_source = "none"
+                    if block.proximity_distance_metres is None:
+                        block.decision_reason = (
+                            "Donor data was rejected because the donor block entry proximity rule "
+                            "could not determine a valid distance."
+                        )
+                    else:
+                        block.decision_reason = (
+                            "Donor data was rejected because the donor block entry proximity rule "
+                            f"failed ({block.proximity_distance_metres:.1f} m > "
+                            f"{args.donor_switch_radius_metres:.1f} m)."
+                        )
                     continue
+                block.selected_source = "donor"
+                block.decision_reason = (
+                    "Donor data was used because base coverage was absent and the base-to-donor "
+                    f"transition passed the proximity check ({distance_metres:.1f} m <= "
+                    f"{args.donor_switch_radius_metres:.1f} m)."
+                )
+            else:
+                block.selected_source = "donor"
+                block.decision_reason = (
+                    "Donor data was used because base coverage was absent and no preceding base "
+                    "trackpoint existed, so the proximity check did not block donor usage."
+                )
+        elif not args.no_donor_switch_proximity_check and last_selected_source == "donor":
+            block.selected_source = "donor"
+            block.decision_reason = (
+                "Donor data was used because base coverage was absent and the output was already "
+                "continuing through donor blocks, so the proximity check was not re-applied."
+            )
+        else:
+            block.selected_source = "donor"
+            if args.no_donor_switch_proximity_check:
+                block.decision_reason = (
+                    "Donor data was used because base coverage was absent and the proximity check was disabled."
+                )
+            else:
+                block.decision_reason = (
+                    "Donor data was used because base coverage was absent and this block did not "
+                    "represent a base-to-donor transition."
+                )
 
         selected.extend(block.donor_points)
+        last_selected_source = "donor"
 
     selected = dedupe_and_sort(selected)
 
@@ -818,8 +1002,7 @@ def main(argv: list[str] | None = None) -> int:
     base_count = sum(1 for p in selected if p.source_kind == "base")
     donor_count = sum(1 for p in selected if p.source_kind == "donor")
 
-    print(f"Wrote {args.output}")
-    print(f"Selected {len(selected)} trackpoint(s): {base_count} base, {donor_count} donor")
+    report_output_summary(args.output, selected, base_count, donor_count)
     print(f"Output bounds: {format_time(start)} to {format_time(end)}")
     if not args.no_donor_switch_proximity_check:
         print(
@@ -827,6 +1010,7 @@ def main(argv: list[str] | None = None) -> int:
             f" evaluated {proximity_checked_blocks} donor block(s),"
             f" skipped {skipped_donor_blocks}"
         )
+    report_blocks(blocks, sorted(base_points + donor_points, key=point_sort_key))
     return 0
 
 
