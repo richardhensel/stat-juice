@@ -319,48 +319,6 @@ def inside_any(t: datetime, intervals: list[tuple[datetime, datetime]]) -> bool:
     return False
 
 
-def subtract_intervals(
-    intervals: list[tuple[datetime, datetime]],
-    blockers: list[tuple[datetime, datetime]],
-) -> list[tuple[datetime, datetime]]:
-    """Return portions of intervals not covered by blockers."""
-    if not intervals:
-        return []
-    if not blockers:
-        return intervals[:]
-
-    intervals = merge_intervals(intervals)
-    blockers = merge_intervals(blockers)
-    result: list[tuple[datetime, datetime]] = []
-
-    j = 0
-    for start, end in intervals:
-        cursor = start
-
-        while j < len(blockers) and blockers[j][1] < start:
-            j += 1
-
-        k = j
-        while k < len(blockers) and blockers[k][0] <= end:
-            block_start, block_end = blockers[k]
-
-            if block_start > cursor:
-                result.append((cursor, min(block_start, end)))
-
-            if block_end > cursor:
-                cursor = block_end
-
-            if cursor >= end:
-                break
-
-            k += 1
-
-        if cursor < end:
-            result.append((cursor, end))
-
-    return merge_intervals(result)
-
-
 def block_probe_time(start: datetime, end: datetime) -> datetime:
     if start == end:
         return start
@@ -370,6 +328,9 @@ def block_probe_time(start: datetime, end: datetime) -> datetime:
 def build_blocks(
     base_coverage: list[tuple[datetime, datetime]],
     donor_coverage: list[tuple[datetime, datetime]],
+    base_points: list[TrackPoint],
+    donor_points: list[TrackPoint],
+    donor_switch_radius_metres: float,
     start: datetime,
     end: datetime,
 ) -> list[MergeBlock]:
@@ -380,6 +341,15 @@ def build_blocks(
     for interval_start, interval_end in clipped_base + clipped_donor:
         boundaries.add(interval_start)
         boundaries.add(interval_end)
+    boundaries.update(
+        collect_transition_boundary_times(
+            base_points=base_points,
+            donor_points=donor_points,
+            donor_switch_radius_metres=donor_switch_radius_metres,
+            start=start,
+            end=end,
+        )
+    )
 
     sorted_boundaries = sorted(boundaries)
     if len(sorted_boundaries) == 1:
@@ -482,6 +452,60 @@ def haversine_metres(a: TrackPoint, b: TrackPoint) -> float:
     hav = sin(dlat / 2) ** 2 + cos(lat1_rad) * cos(lat2_rad) * sin(dlon / 2) ** 2
     earth_radius_metres = 6_371_000.0
     return 2 * earth_radius_metres * asin(sqrt(hav))
+
+
+def latest_positions_are_within_radius(
+    base_point: TrackPoint | None,
+    donor_point: TrackPoint | None,
+    radius_metres: float,
+) -> bool:
+    if base_point is None or donor_point is None:
+        return False
+
+    try:
+        distance_metres = haversine_metres(base_point, donor_point)
+    except ValueError:
+        return False
+    return distance_metres <= radius_metres
+
+
+def collect_transition_boundary_times(
+    base_points: list[TrackPoint],
+    donor_points: list[TrackPoint],
+    donor_switch_radius_metres: float,
+    start: datetime,
+    end: datetime,
+) -> set[datetime]:
+    transition_times: set[datetime] = set()
+    events = sorted(
+        [point for point in base_points + donor_points if start <= point.time <= end],
+        key=point_sort_key,
+    )
+
+    last_base_point = find_last_point_at_or_before_time(base_points, start)
+    last_donor_point = find_last_point_at_or_before_time(donor_points, start)
+    was_inside_radius = latest_positions_are_within_radius(
+        last_base_point,
+        last_donor_point,
+        donor_switch_radius_metres,
+    )
+
+    for point in events:
+        if point.source_kind == "base":
+            last_base_point = point
+        else:
+            last_donor_point = point
+
+        is_inside_radius = latest_positions_are_within_radius(
+            last_base_point,
+            last_donor_point,
+            donor_switch_radius_metres,
+        )
+        if not was_inside_radius and is_inside_radius:
+            transition_times.add(point.time)
+        was_inside_radius = is_inside_radius
+
+    return transition_times
 
 
 def find_last_base_point_before_time(
@@ -835,6 +859,8 @@ def main(argv: list[str] | None = None) -> int:
 
     base_points = flatten_points(base_parsed)
     donor_points = flatten_points(donor_parsed)
+    all_base_points = sorted(base_points, key=point_sort_key)
+    all_donor_points = sorted(donor_points, key=point_sort_key)
 
     if not base_points:
         raise SystemExit("Error: no timed trackpoints found in base files")
@@ -883,6 +909,9 @@ def main(argv: list[str] | None = None) -> int:
     blocks = build_blocks(
         base_coverage=base_coverage,
         donor_coverage=donor_coverage,
+        base_points=all_base_points,
+        donor_points=all_donor_points,
+        donor_switch_radius_metres=args.donor_switch_radius_metres,
         start=start,
         end=end,
     )
@@ -931,7 +960,7 @@ def main(argv: list[str] | None = None) -> int:
             and donor_transition_requires_proximity_check(last_selected_source)
         ):
             proximity_checked_blocks += 1
-            last_base_point = find_last_base_point_before_time(base_points, block.start)
+            last_base_point = find_last_base_point_before_time(all_base_points, block.start)
             if last_base_point is not None:
                 try:
                     distance_metres = haversine_metres(last_base_point, block.donor_points[0])

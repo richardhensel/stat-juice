@@ -330,10 +330,12 @@ Implement helpers for:
 
 - Merging intervals.
 - Checking whether a timestamp is inside any interval.
-- Subtracting one set of intervals from another.
 - Clipping intervals to the output bounds.
 
-These helpers should also support construction of shared merge blocks from base and donor coverage boundaries.
+These helpers should also support construction of shared merge blocks from:
+
+- base and donor coverage boundaries
+- outside-to-inside proximity transition boundaries between the latest known base and donor positions
 
 ## Block Construction
 
@@ -343,15 +345,19 @@ Recommended algorithm:
 
 1. Clip merged base coverage and merged donor coverage to the output bounds.
 2. Collect every coverage start and end time from both source types.
-3. Sort these boundary times.
-4. Create contiguous blocks between each adjacent pair of boundary times.
-5. For each block, record whether base coverage exists and whether donor coverage exists inside that block.
-6. Assign trackpoints from each source into the blocks whose time ranges contain them.
+3. Also collect every time inside the output bounds where the latest known base position and latest known donor position transition from outside the configured radius to inside it.
+4. When detecting these transition boundaries, use the most recent base trackpoint at or before that time and the most recent donor trackpoint at or before that time.
+5. Do not create a transition boundary merely because donor crosses an older part of base's path if the latest known base and donor positions at that time are still outside the configured radius.
+6. Sort these boundary times.
+7. Create contiguous blocks between each adjacent pair of boundary times.
+8. For each block, record whether base coverage exists and whether donor coverage exists inside that block.
+9. Assign trackpoints from each source into the blocks whose time ranges contain them.
 
 This produces synchronised block boundaries for both source types:
 
 - If either base or donor begins a gap in coverage, both are broken at that point.
 - If either base or donor regains coverage, both are broken at that point.
+- If the latest known base and donor positions transition from outside the configured radius to inside it, both are broken at that point, even if base coverage is no longer current.
 - A block is later accepted or rejected as a whole.
 
 ## Proximity Helpers
@@ -359,6 +365,8 @@ This produces synchronised block boundaries for both source types:
 Implement helpers for:
 
 - Finding the most recent base trackpoint before a block.
+- Finding the latest known base trackpoint at or before an arbitrary time.
+- Finding the latest known donor trackpoint at or before an arbitrary time.
 - Finding the first donor trackpoint inside a donor block.
 - Calculating great-circle distance between two latitude/longitude pairs in metres.
 
@@ -390,7 +398,7 @@ Recommended algorithm:
 8. Build coverage intervals for each file.
 9. Merge all base coverage intervals into a single base coverage union.
 10. Merge all donor coverage intervals into a single donor coverage union.
-11. Build shared timeline blocks from base and donor coverage boundaries.
+11. Build shared timeline blocks from base and donor coverage boundaries plus outside-to-inside proximity transition boundaries.
 12. For each block:
     - If base coverage exists in the block, select base points from that block.
     - Otherwise, if donor coverage exists in the block, treat the donor points in that block as a candidate donor block.
@@ -650,20 +658,29 @@ donor_coverage = merge_intervals(
     intervals from all donor files
 )
 
+all_base_points = sorted(all parsed base points)
+all_donor_points = sorted(all parsed donor points)
+
 blocks = build_blocks(
     base_coverage=base_coverage,
     donor_coverage=donor_coverage,
+    base_points=all_base_points,
+    donor_points=all_donor_points,
+    donor_switch_radius_metres=args.donor_switch_radius_metres,
     start=start,
     end=end,
 )
 
-assign_points_to_blocks(blocks, base_parsed, donor_parsed)
+assign_points_to_blocks(blocks, base points inside bounds, "base_points")
+assign_points_to_blocks(blocks, donor points inside bounds, "donor_points")
 
 selected = []
+last_selected_source = None
 
 for block in blocks:
     if block.has_base_coverage:
         selected.extend(block.base_points)
+        last_selected_source = "base"
         continue
 
     if not block.has_donor_coverage:
@@ -672,10 +689,13 @@ for block in blocks:
     if not block.donor_points:
         continue
 
-    if not args.no_donor_switch_proximity_check:
-        last_base_point = find_last_base_point_before_block(
-            block,
-            base_parsed,
+    if (
+        not args.no_donor_switch_proximity_check
+        and last_selected_source == "base"
+    ):
+        last_base_point = find_last_base_point_before_time(
+            all_base_points,
+            block.start,
         )
         first_donor_point = block.donor_points[0]
 
@@ -688,6 +708,7 @@ for block in blocks:
                 continue
 
     selected.extend(block.donor_points)
+    last_selected_source = "donor"
 
 selected = dedupe_and_sort(selected)
 

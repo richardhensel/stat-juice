@@ -144,19 +144,32 @@ Donor coverage should then be treated as the merged union of all donor-file cove
 
 Merging should operate on timeline blocks rather than on individual trackpoints.
 
-A block is a contiguous time range inside the configured output bounds during which base coverage presence/absence and donor coverage presence/absence do not change.
+A block is a contiguous time range inside the configured output bounds during which:
+
+- base coverage presence/absence does not change
+- donor coverage presence/absence does not change
+- the within-radius relationship between the latest known base position and the latest known donor position does not change
 
 Blocks must be constructed as follows:
 
 1. Clip all base and donor coverage intervals to the configured output time bounds.
 2. Collect every point in time where either base coverage or donor coverage starts or ends.
-3. Split the timeline at each such point.
-4. Treat each resulting contiguous time range as a block.
+3. Also identify any point in time where the relationship between the latest known base position and the latest known donor position transitions from outside the configured radius to inside the configured radius.
+4. Split the timeline at each such point.
+5. Treat each resulting contiguous time range as a block.
+
+For this purpose:
+
+- the latest known base position means the most recent base trackpoint at or before that time
+- the latest known donor position means the most recent donor trackpoint at or before that time
 
 This means:
 
 - If either base or donor begins a gap in coverage, both are broken at that point.
 - If either base or donor regains coverage, both are broken at that point.
+- If the latest known base position and latest known donor position transition from outside the configured radius to inside the configured radius, both are broken at that point.
+- This split can occur even if base coverage is no longer current at that time, provided the donor passes a point where the latest known base and donor positions become within the configured radius.
+- A block must not be broken merely because donor crosses some earlier part of base's path if the latest known base position and latest known donor position at that time are not within the configured radius.
 - Blocks are therefore synchronised across both source types.
 - A block must be added all together or not at all according to the merge rules.
 
@@ -250,13 +263,6 @@ The script should remove personal or sensitive performance data such as:
 - Unknown/private extension data.
 - Device or sensor identifiers.
 
-### Position-only Mode
-
-Donor points should retain only:
-
-- Latitude.
-- Longitude.
-- Time.
 
 ### Preserve Mode
 
