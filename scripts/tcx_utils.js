@@ -353,7 +353,7 @@ function createTcxFile(activityData) {
     const idElem = xmlDoc.createElement("Id");
     // Use the timestamp of the second record of the first lap. 
     // we then remove the first record to make it appear different from the original file when uploaded to Strava.
-    idElem.textContent = activityData.records[1].timestamp;
+    idElem.textContent = activityData.records[1]?.timestamp || activityData.records[0]?.timestamp || activityData.activity.activityId;
     appendIfNotNull(activityElem, idElem);
 
     let totalCumulativeDistance = 0; // Track total cumulative distance for all trackpoints
@@ -384,9 +384,13 @@ function createTcxFile(activityData) {
         var lapRecords = activityData.records.filter(record => record.lapId === lap.lapId);
 
         // Remove the first record of the first lap. To make it appear different from the original file when uploaded to Strava.
-        if (firstLap)
+        if (firstLap && lapRecords.length > 1)
         {
             lapRecords = lapRecords.slice(1);
+            firstLap = false;
+        }
+        else if (firstLap)
+        {
             firstLap = false;
         }
 

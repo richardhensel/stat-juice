@@ -6,19 +6,10 @@
 
 ## Surrogate
 
-* Optional Self-recorded set of files
+Page: `fill-from-surogate/index.html`
 
-These are used directly in the output
-
-
-* Optional surrogate
-
-These are appended to the self-recorded datasets, but without the personalised data streams present (power, cadence, HR)
-
-
-### Challenges
-
-* We might not want to use all of the surrogate, if the surrogate activity began before the period together, or continued after the period together.
-* If surrogete is before Self-recorded, need to specify whether to use entire surrogate or a certain time point after the startof surrogate.
-* If surrogate is after self-recorded, need to specify whether to use entire surrogate or a certain time point before the start of surrogate.
-* Always need to automatically identify the point at which the surrogate joins to the 
+* Upload multiple base TCX files and multiple donor TCX files.
+* Build timeline blocks from coverage boundaries and radius transitions.
+* Default each block to base, donor, or none.
+* Let the user override every block selection before download.
+* Show three maps plus summary statistics for all inputs and the current output.

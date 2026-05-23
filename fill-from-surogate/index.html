@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stat Juice - Fill From Surrogate</title>
+  <link rel="icon" href="../images/icon_round_square_background.png" type="image/png">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --accent: #f98a1b;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --panel: #ffffff;
+      --panel-alt: #f8fafc;
+      --border: #d1d5db;
+      --shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      color: var(--text);
+      background: linear-gradient(180deg, #fff9f2 0%, #f8fafc 100%);
+    }
+
+    a {
+      color: inherit;
+    }
+
+    .topbar {
+      display: flex;
+      font-family: Arial, sans-serif;
+      margin-bottom: 1rem;
+    }
+
+    .topbar-logo {
+      display: flex;
+      align-items: center;
+      text-decoration: none;
+    }
+
+    .topbar-logo img {
+      height: 60px;
+    }
+
+    .topbar-nav {
+      background-color: var(--accent);
+      color: white;
+      min-height: 60px;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      padding: 0 1rem;
+    }
+
+    .topbar-nav-links {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .topbar-nav-links a {
+      color: white;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    .page-shell {
+      padding: 0 1rem 1rem;
+    }
+
+    .page-heading {
+      max-width: 1400px;
+      margin: 0 auto 1rem;
+    }
+
+    .page-heading p {
+      color: var(--muted);
+      max-width: 70ch;
+    }
+
+    .layout {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      align-items: start;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .left-column {
+      display: grid;
+      gap: 1rem;
+      position: sticky;
+      top: 1rem;
+      max-height: calc(100vh - 2rem);
+    }
+
+    .panel-header {
+      padding: 1rem 1rem 0;
+    }
+
+    .panel-body {
+      padding: 1rem;
+    }
+
+    .upload-strip {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+      align-items: end;
+    }
+
+    .upload-field {
+      display: grid;
+      gap: 0.35rem;
+    }
+
+    .upload-field label {
+      font-size: 0.84rem;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+    }
+
+    .upload-field input[type="file"] {
+      display: block;
+      width: 100%;
+      padding: 0.4rem;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--panel-alt);
+    }
+
+    .status {
+      margin-top: 0.55rem;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .status-error {
+      color: #b91c1c;
+    }
+
+    .block-list {
+      overflow-y: auto;
+      padding: 0.5rem 1rem 1rem;
+      display: grid;
+      gap: 0.5rem;
+      max-height: calc(100vh - 220px);
+    }
+
+    .block-row {
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      border-radius: 14px;
+      padding: 0.55rem 0.7rem;
+      min-height: 62px;
+    }
+
+    .block-metric span,
+    .summary-cell span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.8rem;
+      margin-bottom: 0.25rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .block-number {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid rgba(15, 23, 42, 0.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      flex: 0 0 34px;
+    }
+
+    .block-metric {
+      min-width: 0;
+      flex: 1 1 0;
+    }
+
+    .choice-squares {
+      display: flex;
+      gap: 0.4rem;
+      flex: 0 0 auto;
+      margin-left: auto;
+    }
+
+    .choice-square {
+      --choice-colour: #9ca3af;
+      width: 24px;
+      height: 24px;
+      border-radius: 7px;
+      border: 2px solid var(--choice-colour);
+      background: color-mix(in srgb, var(--choice-colour) 20%, white);
+      cursor: pointer;
+      padding: 0;
+    }
+
+    .choice-square-active {
+      background: var(--choice-colour);
+      box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.75);
+    }
+
+    .choice-square:disabled {
+      opacity: 0.45;
+      cursor: default;
+    }
+
+    .right-column {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .map-grid {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .map-card {
+      padding: 1rem;
+    }
+
+    .map-card h2 {
+      margin-top: 0;
+      margin-bottom: 0.75rem;
+    }
+
+    .map-frame {
+      height: 240px;
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 0.75rem;
+    }
+
+    .summary-cell {
+      padding: 0.85rem;
+      border-radius: 12px;
+      background: var(--panel-alt);
+    }
+
+    .table-wrapper {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      padding: 0.7rem;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+    }
+
+    .button {
+      padding: 0.8rem 1.1rem;
+      border: none;
+      border-radius: 999px;
+      background: var(--accent);
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .button[disabled] {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .empty-state {
+      padding: 1rem;
+      border: 1px dashed var(--border);
+      border-radius: 14px;
+      color: var(--muted);
+      background: var(--panel-alt);
+    }
+
+    .block-marker-dot {
+      width: 26px;
+      height: 26px;
+      border-radius: 999px;
+      color: white;
+      font-size: 12px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid white;
+      box-shadow: 0 4px 10px rgba(15, 23, 42, 0.2);
+    }
+
+    @media (max-width: 1100px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .left-column {
+        position: static;
+        max-height: none;
+      }
+
+      .block-list {
+        max-height: 480px;
+      }
+
+      .upload-strip {
+        grid-template-columns: 1fr;
+      }
+
+      .block-row {
+        flex-wrap: wrap;
+        align-items: flex-start;
+      }
+
+      .choice-squares {
+        width: 100%;
+        margin-left: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <a href="../index.html" class="topbar-logo">
+      <img src="../images/logo_and_icon.png" alt="Stat Juice logo">
+    </a>
+    <div class="topbar-nav">
+      <div class="topbar-nav-links">
+        <a href="../fill-gaps.html">Fill Gaps</a>
+        <a href="../join.html">Join Files</a>
+        <a href="./index.html">Fill From Surrogate</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-shell">
+    <section class="page-heading">
+      <h1>Fill From Surrogate</h1>
+      <p>Upload one or more base TCX files and one or more donor TCX files, review the generated timeline blocks, and choose whether each block should use base data, donor data, or no data before downloading the combined output.</p>
+    </section>
+
+    <main class="layout">
+      <section class="left-column">
+        <div class="panel">
+          <div class="panel-header">
+            <h2>Inputs</h2>
+          </div>
+          <div class="panel-body">
+            <div class="upload-strip">
+              <div class="upload-field">
+                <label for="base-file-input">Base TCX Files</label>
+                <input id="base-file-input" type="file" accept=".tcx" multiple>
+              </div>
+              <div class="upload-field">
+                <label for="donor-file-input">Donor TCX Files</label>
+                <input id="donor-file-input" type="file" accept=".tcx" multiple>
+              </div>
+            </div>
+            <p id="page-status" class="status">Select files to begin building blocks.</p>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <h2>Blocks</h2>
+          </div>
+          <div id="block-list" class="block-list"></div>
+        </div>
+      </section>
+
+      <section class="right-column">
+        <div class="map-grid">
+          <div class="panel map-card">
+            <h2>Base Activities</h2>
+            <div id="base-map" class="map-frame"></div>
+          </div>
+          <div class="panel map-card">
+            <h2>Donor Activities</h2>
+            <div id="donor-map" class="map-frame"></div>
+          </div>
+          <div class="panel map-card">
+            <h2>Current Output</h2>
+            <div id="output-map" class="map-frame"></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <h2>Output Summary</h2>
+          </div>
+          <div id="output-summary" class="panel-body"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <h2>Summary Statistics</h2>
+          </div>
+          <div class="panel-body table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Source</th>
+                  <th>Total Time</th>
+                  <th>Total Distance</th>
+                  <th>Avg Speed</th>
+                  <th>Elevation</th>
+                  <th>Avg HR</th>
+                  <th>Avg Power</th>
+                  <th>Calories</th>
+                </tr>
+              </thead>
+              <tbody id="summary-stats-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-body">
+            <button id="download-button" class="button" disabled>Download Output TCX</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="../scripts/geometry_utils.js"></script>
+  <script src="../scripts/tcx_utils.js"></script>
+  <script src="../scripts/plotting_utils.js"></script>
+  <script src="../scripts/fill_from_surrogate_blocks.js"></script>
+  <script src="../scripts/fill_from_surrogate_output.js"></script>
+  <script src="../scripts/fill_from_surrogate_state.js"></script>
+  <script src="../scripts/fill_from_surrogate_ui.js"></script>
+  <script>
+    FillFromSurrogateUi.initialisePage();
+  </script>
+</body>
+</html>
