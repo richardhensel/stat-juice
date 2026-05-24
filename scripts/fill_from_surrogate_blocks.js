@@ -369,6 +369,12 @@
 
     const blocks = [];
     const pushBlock = (index, startMs, endMs) => {
+      const isPointBlock = startMs === endMs;
+      const baseCoveragePresent = isIntervalCovered(baseCoverage, startMs, endMs) ||
+        (isPointBlock && isIntervalCovered(baseCoverage, startMs - 1, endMs + 1));
+      const donorCoveragePresent = isIntervalCovered(donorCoverage, startMs, endMs) ||
+        (isPointBlock && isIntervalCovered(donorCoverage, startMs - 1, endMs + 1));
+
       blocks.push({
         id: `block-${index + 1}`,
         index,
@@ -376,8 +382,8 @@
         endMs,
         startTime: new Date(startMs).toISOString(),
         endTime: new Date(endMs).toISOString(),
-        baseCoverage: isIntervalCovered(baseCoverage, startMs, endMs) || isIntervalCovered(baseCoverage, startMs - 1, endMs + 1),
-        donorCoverage: isIntervalCovered(donorCoverage, startMs, endMs) || isIntervalCovered(donorCoverage, startMs - 1, endMs + 1),
+        baseCoverage: baseCoveragePresent,
+        donorCoverage: donorCoveragePresent,
         baseRecords: [],
         donorRecords: [],
         defaultSelection: "none",
@@ -400,10 +406,19 @@
       }
     }
 
-    assignRecordsToBlocks(blocks, baseRecords, "baseRecords");
-    assignRecordsToBlocks(blocks, donorRecords, "donorRecords");
+    const coveredBlocks = blocks
+      .filter((block) => block.baseCoverage || block.donorCoverage)
+      .map((block, filteredIndex) =>
+        Object.assign(block, {
+          index: filteredIndex,
+          id: `block-${filteredIndex + 1}`,
+        }),
+      );
 
-    for (const block of blocks) {
+    assignRecordsToBlocks(coveredBlocks, baseRecords, "baseRecords");
+    assignRecordsToBlocks(coveredBlocks, donorRecords, "donorRecords");
+
+    for (const block of coveredBlocks) {
       block.baseAvailable = block.baseRecords.length > 0;
       block.donorAvailable = block.donorRecords.length > 0;
       block.blockNumber = block.index + 1;
@@ -413,9 +428,9 @@
       block.donorDistanceMetres = calculateBlockDistanceMetres(block.donorRecords);
     }
 
-    addBoundaryLocations(blocks, baseRecords, donorRecords);
+    addBoundaryLocations(coveredBlocks, baseRecords, donorRecords);
 
-    return blocks;
+    return coveredBlocks;
   }
 
   function findLatestBaseRecordBefore(baseInputs, timeMs) {

@@ -221,6 +221,7 @@ Block construction should be implemented in `scripts/fill_from_surrogate_blocks.
 - build merged donor coverage
 - identify outside-to-inside proximity transition times
 - construct synchronised blocks
+- discard any candidate time range where neither base nor donor coverage exists
 - assign points into blocks
 
 ### Core Helper Functions
@@ -262,6 +263,16 @@ Recommended implementation:
 5. Whenever the state changes from outside-radius to inside-radius, record a block boundary at that event time.
 
 This logic should not use historical path intersections; it should only use the latest known positions at that time.
+
+### Coverage Filter
+
+After the timeline has been split at all relevant boundaries:
+
+- evaluate each candidate time range for merged base coverage and merged donor coverage
+- discard any candidate range where neither base nor donor coverage exists
+- only the remaining covered ranges become blocks in the UI and output-selection flow
+
+This means timeline gaps with no coverage from either input should not produce placeholder blocks.
 
 ## Default Block Selection Plan
 
@@ -480,6 +491,7 @@ Recommended test areas:
 
 - coverage interval construction
 - block boundary construction
+- filtering out uncovered timeline gaps so they do not become blocks
 - outside-to-inside transition detection
 - default block selection
 - donor entry proximity rule behaviour
@@ -510,6 +522,7 @@ Recommended manual checks:
 10. Confirm numbered block-start markers appear consistently across maps.
 11. Download output multiple times without clearing state.
 12. Refresh with a case where donor comes within radius later in time and confirm a block split occurs there.
+13. Confirm uncovered timeline gaps between activities do not appear as selectable blocks.
 
 ## Delivery Order
 

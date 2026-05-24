@@ -103,10 +103,18 @@
 
     .left-column {
       display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
       gap: 1rem;
       position: sticky;
       top: 1rem;
-      max-height: calc(100vh - 2rem);
+      height: calc(100vh - 2rem);
+      min-height: 0;
+    }
+
+    .left-column .panel:last-child {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
     }
 
     .panel-header {
@@ -160,8 +168,10 @@
       overflow-y: auto;
       padding: 0.5rem 1rem 1rem;
       display: grid;
+      align-content: start;
       gap: 0.5rem;
-      max-height: calc(100vh - 220px);
+      flex: 1 1 auto;
+      min-height: 0;
     }
 
     .block-row {
@@ -337,11 +347,12 @@
 
       .left-column {
         position: static;
-        max-height: none;
+        height: auto;
       }
 
       .block-list {
         max-height: 480px;
+        flex: none;
       }
 
       .upload-strip {
@@ -376,7 +387,7 @@
 
   <div class="page-shell">
     <section class="page-heading">
-      <h1>Fill From Surrogate</h1>
+      <h1>Fill From Surrogate [EXPERIMENTAL FEATURE]</h1>
       <p>Upload one or more base TCX files and one or more donor TCX files, review the generated timeline blocks, and choose whether each block should use base data, donor data, or no data before downloading the combined output.</p>
     </section>
 

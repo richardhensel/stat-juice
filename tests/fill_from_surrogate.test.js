@@ -219,6 +219,49 @@ describe("fill from surrogate helpers", () => {
     expect(blocks[0].blockNumber).to.equal(1);
   });
 
+  it("does not create blocks for uncovered gaps between covered periods", () => {
+    const baseInput = FillFromSurrogateBlocks.createSourceInput(
+      "base",
+      "base.tcx",
+      makeSurrogateActivity([
+        makeSurrogateRecord({
+          timestamp: "2024-01-01T00:00:00Z",
+          position: [0, 0],
+        }),
+        makeSurrogateRecord({
+          timestamp: "2024-01-01T00:00:05Z",
+          position: [0, 0.0005],
+        }),
+      ]),
+      0,
+    );
+
+    const donorInput = FillFromSurrogateBlocks.createSourceInput(
+      "donor",
+      "donor.tcx",
+      makeSurrogateActivity([
+        makeSurrogateRecord({
+          timestamp: "2024-01-01T00:00:30Z",
+          position: [0, 0.003],
+        }),
+        makeSurrogateRecord({
+          timestamp: "2024-01-01T00:00:35Z",
+          position: [0, 0.0035],
+        }),
+      ]),
+      0,
+    );
+
+    const blocks = FillFromSurrogateBlocks.buildBlocks(
+      [baseInput],
+      [donorInput],
+      { minCoverageThresholdSeconds: 5, maxCoverageThresholdSeconds: 5 },
+    );
+
+    expect(blocks.length).to.equal(2);
+    expect(blocks.every((block) => block.baseCoverage || block.donorCoverage)).to.equal(true);
+  });
+
   it("builds coloured output-map segments and grey connectors across skipped blocks", () => {
     const baseRecords = [
       Object.assign(makeSurrogateRecord({

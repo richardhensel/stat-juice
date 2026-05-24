@@ -94,7 +94,8 @@ Blocks must be constructed as follows:
 2. Collect every point in time where either base coverage or donor coverage starts or ends.
 3. Also identify any point in time where the relationship between the latest known base position and the latest known donor position transitions from outside the configured radius to inside the configured radius.
 4. Split the timeline at each such point.
-5. Treat each resulting contiguous time range as a block.
+5. Discard any resulting contiguous time range for which neither base coverage nor donor coverage exists.
+6. Treat each remaining contiguous time range as a block.
 
 For this purpose:
 
@@ -108,6 +109,7 @@ This means:
 - if the latest known base position and latest known donor position transition from outside the configured radius to inside the configured radius, both are broken at that point
 - this split can occur even if base coverage is no longer current at that time, provided the donor passes a point where the latest known base and donor positions become within the configured radius
 - a block must not be broken merely because donor crosses some earlier part of base's path if the latest known base position and latest known donor position at that time are not within the configured radius
+- if neither base coverage nor donor coverage exists for a time period, that period must not produce a block at all
 - blocks are therefore synchronised across both source types
 - a block is the unit on which default selection and user override later operate
 
@@ -201,7 +203,7 @@ If both base and donor are available for a block, the user must be able to switc
 
 If only one of `base` or `donor` is available, the user must still be able to choose `none`.
 
-If no source is available, the row should show that the block is empty and only `none` is selectable.
+Because blocks are not created for periods where neither input has coverage, the interface does not need to show rows for completely empty timeline gaps.
 
 Availability and selection must be represented with the same UI control.
 
