@@ -9,6 +9,13 @@
     none: "#9ca3af",
   };
 
+  const TILE_LAYER_URL = "https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png";
+  const TILE_LAYER_OPTIONS = {
+    subdomains: ["a", "b", "c"],
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, tiles courtesy of <a href="https://www.hotosm.org/">Humanitarian OpenStreetMap Team</a>',
+  };
+
   function formatDateTime(timestamp) {
     if (!timestamp) {
       return "Unknown";
@@ -83,10 +90,7 @@
 
   function createMap(mapId) {
     const map = L.map(mapId).setView([0, 0], 2);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19,
-      attribution: "© OpenStreetMap contributors",
-    }).addTo(map);
+    L.tileLayer(TILE_LAYER_URL, TILE_LAYER_OPTIONS).addTo(map);
     return map;
   }
 
